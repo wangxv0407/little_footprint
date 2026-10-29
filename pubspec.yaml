@@ -1,0 +1,48 @@
+name: little_footprint
+description: 小脚印成长记 - 本地优先、局域网同步的宝宝成长记录App（仅夫妻双机，安卓）。
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 本地数据库与文件路径
+  sqflite: ^2.3.3
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # 工具
+  uuid: ^4.4.2
+  crypto: ^3.0.5
+  intl: ^0.19.0
+  archive: ^3.6.1
+  image: ^4.2.0
+
+  # 媒体
+  image_picker: ^1.1.2
+  record: ^5.1.2
+  audioplayers: ^6.1.0
+  video_player: ^2.9.1
+  chewie: ^1.8.1
+  photo_view: ^0.15.0
+
+  # 权限
+  permission_handler: ^11.3.1
+
+  # 网络（局域网）
+  network_info_plus: ^5.0.3
+
+  # 图表（成长曲线）
+  fl_chart: ^0.68.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
