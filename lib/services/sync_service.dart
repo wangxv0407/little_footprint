@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 
@@ -42,7 +43,6 @@ class SyncService {
 
   ServerSocket? _server;
   Socket? _socket;
-  bool _running = false;
   final _events = StreamController<SyncEvent>.broadcast();
   Stream<SyncEvent> get events => _events.stream;
 
@@ -53,7 +53,6 @@ class SyncService {
     if (_server != null) return;
     try {
       _server = await ServerSocket.bind(InternetAddress.anyIPv4, port);
-      _running = true;
       _emit('已开启同步服务，监听端口 $port');
       _server!.listen(_onIncoming, onError: (e) => _emit('监听错误: $e', 2));
     } catch (e) {
@@ -65,7 +64,6 @@ class SyncService {
   Future<void> stopServer() async {
     await _server?.close();
     _server = null;
-    _running = false;
     _emit('已关闭同步服务');
   }
 
@@ -152,8 +150,9 @@ class SyncService {
   SyncResult? _lastResult;
 
   // 计算需要从对方拉取的记录 uuid 列表
-  List<String> _computeNeedRecords(Map<String, dynamic> peer,
+  List<String> _computeNeedRecords(Map<String, dynamic>? peer,
       List<GrowthRecord> myRecords, int lastSyncTs) {
+    if (peer == null) return const <String>[];
     final need = <String>[];
     final peerList = (peer['records'] as List? ?? []);
     for (final item in peerList) {
@@ -178,8 +177,9 @@ class SyncService {
     return need;
   }
 
-  List<String> _computeNeedMetrics(Map<String, dynamic> peer,
+  List<String> _computeNeedMetrics(Map<String, dynamic>? peer,
       List<GrowthMetric> myMetrics, int lastSyncTs) {
+    if (peer == null) return const <String>[];
     final need = <String>[];
     final peerList = (peer['metrics'] as List? ?? []);
     for (final item in peerList) {
@@ -236,7 +236,7 @@ class SyncService {
         }
       }
       await channel.send({'type': 'need_metrics', 'uuids': needMetrics});
-      for (final uuid in needMetrics) {
+      for (final _ in needMetrics) {
         final m = await _receiveMetric(channel);
         if (m != null) {
           await db.upsertGrowthMetric(m);
@@ -245,6 +245,7 @@ class SyncService {
     } else {
       // 本方响应：接收对方 need 并发送数据
       final needRec = await channel.receive();
+      if (needRec == null) return;
       if (needRec['type'] == 'need_records') {
         final uuids = (needRec['uuids'] as List? ?? []).cast<String>();
         for (final uuid in uuids) {
@@ -267,6 +268,7 @@ class SyncService {
         }
       }
       final needMet = await channel.receive();
+      if (needMet == null) return;
       if (needMet['type'] == 'need_metrics') {
         final uuids = (needMet['uuids'] as List? ?? []).cast<String>();
         for (final uuid in uuids) {

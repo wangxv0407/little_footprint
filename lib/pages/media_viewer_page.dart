@@ -22,7 +22,7 @@ class MediaViewerPage extends StatefulWidget {
 
 class _MediaViewerPageState extends State<MediaViewerPage> {
   late int _index;
-  final _pageController = PageController();
+  late final PageController _pageController;
   List<String>? _resolved;
 
   @override

@@ -67,8 +67,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
       _snack('需要相册权限');
       return;
     }
-    final files = await _picker.pickMultiImage(source: ImageSource.gallery);
-    if (files != null && files.isNotEmpty) {
+    final files = await _picker.pickMultiImage();
+    if (files.isNotEmpty) {
       setState(() {
         _pickedImagePaths.addAll(files.map((f) => f.path).toList());
       });

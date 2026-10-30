@@ -2,10 +2,8 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../db/app_database.dart';
 import 'media_service.dart';
 
 /// 本地备份导出：打包 SQLite 数据库 + compressed 媒体为 ZIP。
@@ -22,22 +20,16 @@ class BackupService {
 
     // 数据库文件
     if (await File(dbPath).exists()) {
-      archive.addFile(ArchiveFile.fromBytes(
-        'db/little_footprint.db',
-        await File(dbPath).readAsBytes(),
-        date: DateTime.now(),
-      ));
+      final bytes = await File(dbPath).readAsBytes();
+      archive.addFile(ArchiveFile('db/little_footprint.db', bytes.length, bytes));
     }
 
     // compressed 媒体
     await for (final entity in compressedDir.list(recursive: true)) {
       if (entity is File) {
         final rel = p.relative(entity.path, from: compressedDir.path);
-        archive.addFile(ArchiveFile.fromBytes(
-          'media/compressed/$rel',
-          await entity.readAsBytes(),
-          date: DateTime.now(),
-        ));
+        final bytes = await entity.readAsBytes();
+        archive.addFile(ArchiveFile('media/compressed/$rel', bytes.length, bytes));
       }
     }
 

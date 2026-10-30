@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'db/app_database.dart';
-import 'pages/baby_info_page.dart';
 import 'pages/splash_page.dart';
 import 'pages/timeline_page.dart';
 import 'theme.dart';

@@ -26,7 +26,6 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       if (!mounted) return;
       setState(() {
         _playing = state == PlayerState.playing;
-        _loading = state == PlayerState.loading;
       });
     });
     _player.onPlayerComplete.listen((_) {

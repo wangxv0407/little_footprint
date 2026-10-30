@@ -27,13 +27,12 @@ class DateGroup {
     if (!t.isBefore(monthStart) && t.isBefore(monday)) {
       return DateGroup(title: '本月', start: monthStart, end: monday.subtract(const Duration(days: 1)));
     }
-    return const DateGroup(title: '更早', start: DateTime(1900), end: DateTime(2099));
+    return DateGroup(title: '更早', start: DateTime(1900), end: DateTime(2099));
   }
 
   /// 把已排序（倒序）的记录列表按时间分组
   static List<DateGroupSection> groupRecords(
       List<DateTime> recordTimes, DateTime now) {
-    final sections = <DateGroupSection>[];
     DateGroupSection? current;
 
     // 记录时间是倒序的，时间大的在前。为正确归组，我们按时间正序扫描再反转。
