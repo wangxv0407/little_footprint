@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -32,6 +33,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
   final _recorder = AudioRecorder();
   bool _recording = false;
   String? _recordedPath;
+  int _recordSeconds = 0;
+  Timer? _recordTimer;
 
   List<String> _pickedImagePaths = [];
   String? _pickedVideoPath;
@@ -40,6 +43,7 @@ class _AddRecordPageState extends State<AddRecordPage> {
 
   @override
   void dispose() {
+    _recordTimer?.cancel();
     _contentCtrl.dispose();
     _tagCtrl.dispose();
     _recorder.dispose();
@@ -89,6 +93,7 @@ class _AddRecordPageState extends State<AddRecordPage> {
 
   Future<void> _toggleRecording() async {
     if (_recording) {
+      _recordTimer?.cancel();
       final path = await _recorder.stop();
       setState(() {
         _recording = false;
@@ -104,7 +109,15 @@ class _AddRecordPageState extends State<AddRecordPage> {
       final dir = await MediaService.instance.compressedDir;
       final path = p.join(dir.path, 'rec_${DateTime.now().millisecondsSinceEpoch}.aac');
       await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
-      setState(() => _recording = true);
+      setState(() {
+        _recording = true;
+        _recordSeconds = 0;
+      });
+      _recordTimer?.cancel();
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        setState(() => _recordSeconds++);
+      });
     }
   }
 
@@ -195,6 +208,12 @@ class _AddRecordPageState extends State<AddRecordPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  String get _recTimeText {
+    final m = (_recordSeconds ~/ 60).toString().padLeft(2, '0');
+    final s = (_recordSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -274,19 +293,36 @@ class _AddRecordPageState extends State<AddRecordPage> {
                   .toList(),
             ),
             const SizedBox(height: 20),
-            // 媒体
+            // 媒体：照片 / 录音 / 视频 三个 Tab（对齐 UI 设计稿）
             _sectionLabel('媒体'),
-            const SizedBox(height: 10),
-            // 照片
-            _photoSection(),
-            const SizedBox(height: 10),
-            // 录音
-            _audioSection(),
-            const SizedBox(height: 10),
-            // 视频
-            _videoSection(),
-            const SizedBox(height: 30),
-            FilledButton(onPressed: _save, child: const Text('保存')),
+            const SizedBox(height: 4),
+            _mediaTabs(),
+            const SizedBox(height: 24),
+            // 底部操作：取消 / 保存（对齐 UI 设计稿）
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: AppColors.divider),
+                    ),
+                    child: const Text('取消'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _save,
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('保存'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -303,124 +339,189 @@ class _AddRecordPageState extends State<AddRecordPage> {
     );
   }
 
-  Widget _photoSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final path in _pickedImagePaths)
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(File(path), width: 80, height: 80, fit: BoxFit.cover),
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: GestureDetector(
-                      onTap: () => setState(() => _pickedImagePaths.remove(path)),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(Icons.close, size: 14, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            GestureDetector(
-              onTap: _pickImages,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.lightGreen,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.add_a_photo, color: AppColors.primary),
-              ),
+  Widget _mediaTabs() {
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0EFEA),
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        const Text('压缩预览图参与同步，原图保留在手机相册',
-            style: TextStyle(fontSize: 11, color: Color(0xFFB0B0B0))),
-      ],
-    );
-  }
-
-  Widget _audioSection() {
-    return GestureDetector(
-      onTap: _toggleRecording,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: _recording ? Colors.red.withValues(alpha: 0.08) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _recording ? Colors.redAccent : AppColors.divider),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              _recording ? Icons.stop_circle_outlined : Icons.mic,
-              color: _recording ? Colors.redAccent : AppColors.primary,
-              size: 26,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                _recording
-                    ? '正在录音…点击停止'
-                    : (_recordedPath != null ? '已录音 · 点击重新录制' : '点击开始录音（AAC）'),
-                style: TextStyle(
-                  fontSize: 14,
-                  color: _recording ? Colors.redAccent : AppColors.textMain,
-                ),
+            child: TabBar(
+              indicator: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
               ),
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.secondaryText,
+              labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: const TextStyle(fontSize: 14),
+              dividerColor: Colors.transparent,
+              tabs: const [
+                Tab(text: '照片'),
+                Tab(text: '录音'),
+                Tab(text: '视频'),
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 240,
+            child: TabBarView(
+              children: [_photoTab(), _audioTab(), _videoTab()],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _videoSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: _pickVideo,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.videocam, color: AppColors.primary, size: 26),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _pickedVideoPath == null ? '选择视频（MP4）' : '已选择视频 · 点击更换',
-                    style: const TextStyle(fontSize: 14, color: AppColors.textMain),
-                  ),
+  Widget _photoTab() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final path in _pickedImagePaths)
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(File(path), width: 80, height: 80, fit: BoxFit.cover),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _pickedImagePaths.remove(path)),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(Icons.close, size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              GestureDetector(
+                onTap: _pickImages,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColors.lightGreen,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.add_a_photo, color: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text('压缩预览图参与同步，原图保留在手机相册',
+              style: TextStyle(fontSize: 11, color: Color(0xFFB0B0B0))),
+        ],
+      ),
+    );
+  }
+
+  Widget _audioTab() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: _toggleRecording,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+              decoration: BoxDecoration(
+                color: _recording ? Colors.red.withValues(alpha: 0.08) : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _recording ? Colors.redAccent : AppColors.divider),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _recording ? Icons.stop_circle_outlined : Icons.mic,
+                    color: _recording ? Colors.redAccent : AppColors.primary,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _recording
+                          ? '正在录音…点击停止'
+                          : (_recordedPath != null ? '已录音 · 点击重新录制' : '点击开始录音（AAC）'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: _recording ? Colors.redAccent : AppColors.textMain,
+                      ),
+                    ),
+                  ),
+                  if (_recording || _recordedPath != null)
+                    Text(
+                      _recTimeText,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: _recording ? Colors.redAccent : AppColors.primary,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 6),
-        const Text('MVP 视频仅保存在本机，不跨机同步；请自行硬盘备份',
-            style: TextStyle(fontSize: 11, color: Color(0xFFB0B0B0))),
-      ],
+          const SizedBox(height: 10),
+          const Text('录音将全量同步到另一台设备',
+              style: TextStyle(fontSize: 11, color: Color(0xFFB0B0B0))),
+        ],
+      ),
+    );
+  }
+
+  Widget _videoTab() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: _pickVideo,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.videocam, color: AppColors.primary, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _pickedVideoPath == null ? '选择视频（MP4）' : '已选择视频 · 点击更换',
+                      style: const TextStyle(fontSize: 14, color: AppColors.textMain),
+                    ),
+                  ),
+                  if (_pickedVideoPath != null)
+                    const Icon(Icons.check_circle, color: AppColors.primary),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text('MVP 视频仅保存在本机，不跨机同步；请自行硬盘备份',
+              style: TextStyle(fontSize: 11, color: Color(0xFFB0B0B0))),
+        ],
+      ),
     );
   }
 }

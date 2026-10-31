@@ -1,7 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../db/app_database.dart';
+import '../models/baby_info.dart';
 import '../services/backup_service.dart';
 import '../services/media_service.dart';
 import '../theme.dart';
@@ -89,9 +92,14 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('设置'),
+      ),
       body: ListView(
         children: [
+          _babyCard(),
+          const SizedBox(height: 8),
           _item(Icons.child_care, '宝宝信息设置',
               subtitle: '修改小名、出生日期、本机身份', onTap: _openBabyInfo),
           _divider(),
@@ -116,6 +124,59 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _babyCard() {
+    return FutureBuilder<BabyInfo?>(
+      future: AppDatabase.instance.getBabyInfo(),
+      builder: (context, snap) {
+        final info = snap.data;
+        if (info == null) return const SizedBox.shrink();
+        final roleText = info.deviceRole == 'wife' ? '妈妈设备' : '爸爸设备';
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.lightGreen,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.child_care, color: AppColors.primary, size: 28),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      info.babyName.isNotEmpty ? info.babyName : '宝宝',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textMain),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '出生日期：${DateFormat('yyyy-MM-dd').format(info.birthDate)}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '本机身份：$roleText',
+                      style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -60,10 +60,14 @@ class _GrowthArchivePageState extends State<GrowthArchivePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('成长档案')),
-      floatingActionButton: FloatingActionButton(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('成长档案'),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _addMetric,
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('添加测量'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

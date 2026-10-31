@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'db/app_database.dart';
+import 'pages/home_shell.dart';
 import 'pages/splash_page.dart';
-import 'pages/timeline_page.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -41,7 +42,15 @@ class _LittleFootprintAppState extends State<LittleFootprintApp> {
       title: '小脚印成长记',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: _hasConfig ? const TimelinePage() : const SplashPage(),
+      // 中文本地化：让 showDatePicker / showAboutDialog 等系统组件显示中文
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('zh'), Locale('en')],
+      locale: const Locale('zh'),
+      home: _hasConfig ? const HomeShell() : const SplashPage(),
     );
   }
 }

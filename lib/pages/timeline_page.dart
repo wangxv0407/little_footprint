@@ -9,10 +9,7 @@ import '../utils/age_calculator.dart';
 import '../utils/date_group.dart';
 import '../widgets/timeline_card.dart';
 import 'add_record_page.dart';
-import 'growth_archive_page.dart';
 import 'record_detail_page.dart';
-import 'settings_page.dart';
-import 'sync_page.dart';
 
 class TimelinePage extends StatefulWidget {
   const TimelinePage({super.key});
@@ -107,30 +104,26 @@ class _TimelinePageState extends State<TimelinePage> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.query_stats, color: AppColors.primary),
-            tooltip: '成长档案',
-            onPressed: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const GrowthArchivePage())),
-          ),
-          IconButton(
-            icon: const Icon(Icons.sync, color: AppColors.primary),
-            tooltip: '局域网同步',
-            onPressed: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const SyncPage())),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppColors.primary),
-            tooltip: '设置',
-            onPressed: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const SettingsPage())),
-          ),
-          const SizedBox(width: 4),
-        ],
+        // 档案/同步/设置 统一由底部导航进入，AppBar 不再放跳转图标
       ),
       body: Column(
         children: [
+          // 应用主标题（对齐 UI 设计稿）
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 2),
+            child: Row(
+              children: [
+                Text(
+                  '小脚印成长记',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
           _filterBar(),
           Expanded(
             child: _loading

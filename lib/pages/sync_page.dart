@@ -98,7 +98,10 @@ class _SyncPageState extends State<SyncPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('局域网同步')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('局域网同步'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
