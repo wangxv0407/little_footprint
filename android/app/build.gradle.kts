@@ -8,8 +8,8 @@ plugins {
 android {
     namespace = "com.yourfamily.little_footprint"
     compileSdk = flutter.compileSdkVersion
-    // 统一到插件要求的 NDK 版本（jni/record 等 native 插件要求 28.2.13676358）
-    ndkVersion = "28.2.13676358"
+    // 跟随当前 Flutter 版本推荐的 NDK，避免在 CI 上强制下载未预装的特定版本
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -21,11 +21,10 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.yourfamily.little_footprint"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // record_android 要求 minSdk 23，而 flutter.minSdkVersion 为 21，
+        // 不显式抬高会直接构建失败（uses-sdk:minSdkVersion 21 < 23）。
+        minSdk = maxOf(flutter.minSdkVersion, 23)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
