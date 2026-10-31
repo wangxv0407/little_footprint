@@ -8,7 +8,8 @@ plugins {
 android {
     namespace = "com.yourfamily.little_footprint"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // 统一到插件要求的 NDK 版本（audioplayers/image_picker/sqflite 等均要求 27.0.12077973）
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

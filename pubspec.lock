@@ -657,13 +657,13 @@ packages:
     source: hosted
     version: "1.2.2"
   record_linux:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: record_linux
-      sha256: "74d41a9ebb1eb498a38e9a813dd524e8f0b4fdd627270bda9756f437b110a3e3"
+      sha256: fcb5964a84292813de70d52253663c1caca00a15f849fb5d0fdf9b929b28a7b9
       url: "https://mirrors.cloud.tencent.com/dart-pub/"
     source: hosted
-    version: "0.7.2"
+    version: "1.0.0"
   record_platform_interface:
     dependency: transitive
     description:
