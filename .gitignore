@@ -25,3 +25,4 @@ Thumbs.db
 
 # 本地备份产物（若误导出到项目内）
 *.zip
+/app-release.apk
