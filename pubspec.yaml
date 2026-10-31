@@ -44,10 +44,13 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
 
-# record_linux 0.7.2 未实现 record_platform_interface 1.6.0 的新 API，
-# 强制使用已兼容的 1.0.0 以修复 Linux 平台编译。
+# record 5.2.1 强制 record_platform_interface 1.6.0，而 record_linux 只实现到 1.0.2，
+# 两者无兼容组合。降到 record 5.0.0 系列并锁定配套版本，
+# 使 record_linux / record_android 等子包全部自洽，修复 Android 编译错误。
 dependency_overrides:
-  record_linux: 1.0.0
+  record: 5.0.0
+  record_platform_interface: 1.0.2
+  record_android: 1.0.0
 
 flutter:
   uses-material-design: true
