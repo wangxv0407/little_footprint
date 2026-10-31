@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:gal/gal.dart';
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -32,6 +33,32 @@ class MediaService {
     final dir = Directory(p.join(parent.path, name));
     if (!await dir.exists()) await dir.create(recursive: true);
     return dir;
+  }
+
+  /// 头像目录：<docs>/avatars
+  Future<Directory> get avatarDir async {
+    final docs = await getApplicationDocumentsDirectory();
+    return _ensure(docs, 'avatars');
+  }
+
+  /// 保存宝宝头像到应用私有目录，返回绝对路径。
+  /// [oldPath] 非空时删除旧头像文件，避免越积越多。
+  Future<String> storeAvatar(String srcPath, {String? oldPath}) async {
+    final dir = await avatarDir;
+    final ext = p.extension(srcPath).isEmpty ? '.jpg' : p.extension(srcPath);
+    final fileName = 'baby_${DateTime.now().millisecondsSinceEpoch}_${_randSuffix()}$ext';
+    final target = File(p.join(dir.path, fileName));
+    await target.writeAsBytes(await File(srcPath).readAsBytes());
+
+    if (oldPath != null && oldPath.isNotEmpty && oldPath != target.path) {
+      try {
+        final old = File(oldPath);
+        if (await old.exists()) await old.delete();
+      } catch (_) {
+        // 旧文件删不掉不影响功能
+      }
+    }
+    return target.path;
   }
 
   /// 压缩图片：生成长边 1200px 的 JPEG 预览图，写入 compressed 目录，返回 (MediaItem 相关参数, 绝对路径)
@@ -111,15 +138,20 @@ class MediaService {
     return p.join((await recordsRoot).path, relativePath);
   }
 
-  /// 保存图片到系统相册（通过暂存公共目录 + 通知扫描，MVP 简化：写入公共 Pictures）
-  /// 说明：MVP 简化实现，直接复制到 Download/Pictures 目录
+  /// 保存图片到系统相册。
+  ///
+  /// Android 10+ 通过 MediaStore 写入「Pictures/小脚印」，不需要任何存储权限；
+  /// Android 9 及以下回退到公共目录（Manifest 已声明 maxSdkVersion=29 的写权限）。
+  /// 旧实现直接写 `/storage/emulated/0/Pictures`，在分区存储下必然失败。
   Future<String> saveToGallery(String srcPath) async {
-    final dir = Directory('/storage/emulated/0/Pictures/小脚印');
-    if (!await dir.exists()) await dir.create(recursive: true);
-    final fileName = p.basename(srcPath);
-    final target = File(p.join(dir.path, fileName));
-    await target.writeAsBytes(await File(srcPath).readAsBytes());
-    return target.path;
+    if (!await Gal.hasAccess(toAlbum: true)) {
+      final granted = await Gal.requestAccess(toAlbum: true);
+      if (!granted) {
+        throw Exception('没有相册写入权限，请在系统设置中开启');
+      }
+    }
+    await Gal.putImage(srcPath, album: '小脚印');
+    return p.basename(srcPath);
   }
 
   String _randSuffix() {

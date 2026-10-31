@@ -230,7 +230,10 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-/// 宝宝头像：有图显示图，无图显示首字
+/// 宝宝头像：有照片显示照片，无照片显示手绘简笔婴儿脸。
+///
+/// 默认头像刻意用 [CustomPainter] 绘制而非首字文字——文字依赖字体族，
+/// 在中文字体缺失或 fallback 失败时会渲染成方框/问号。
 class BabyAvatar extends StatelessWidget {
   final BabyInfo baby;
   final double size;
@@ -247,31 +250,113 @@ class BabyAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = baby.babyName.isNotEmpty ? baby.babyName.substring(0, 1) : '宝';
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: Container(
+    final path = (absolutePath ?? baby.avatarPath).trim();
+    final palette = _AvatarPalette.of(baby.gender);
+
+    Widget fallback = CustomPaint(
+      size: Size.square(size),
+      painter: _BabyFacePainter(palette),
+    );
+
+    if (path.isNotEmpty) {
+      fallback = Image.file(
+        File(path),
         width: size,
         height: size,
-        color: AppColors.pineLight,
-        alignment: Alignment.center,
-        child: absolutePath != null
-            ? Image.file(
-                File(absolutePath!),
-                width: size,
-                height: size,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _fallback(initial),
-              )
-            : _fallback(initial),
-      ),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox(width: size, height: size, child: fallback),
+    );
+  }
+}
+
+/// 默认头像配色：按性别做轻微色相区分，整体仍在暖色系内。
+class _AvatarPalette {
+  final Color background;
+  final Color face;
+  final Color accent;
+  final Color ink;
+
+  const _AvatarPalette(this.background, this.face, this.accent, this.ink);
+
+  factory _AvatarPalette.of(int gender) {
+    switch (gender) {
+      case 1: // 男孩：浅松绿
+        return const _AvatarPalette(
+            Color(0xFFE4EDE7), Color(0xFFFFFDFB), Color(0xFF2E5245), Color(0xFF2B2724));
+      case 2: // 女孩：浅藕粉
+        return const _AvatarPalette(
+            Color(0xFFFAE7EC), Color(0xFFFFFDFB), Color(0xFFC4788F), Color(0xFF2B2724));
+      default: // 未填：浅陶土
+        return const _AvatarPalette(
+            Color(0xFFF7E8E1), Color(0xFFFFFDFB), Color(0xFFBF5B3B), Color(0xFF2B2724));
+    }
+  }
+}
+
+class _BabyFacePainter extends CustomPainter {
+  final _AvatarPalette p;
+
+  const _BabyFacePainter(this.p);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final u = w < h ? w : h; // 以较短边为基准，保证非正方形也不变形
+
+    // 底色
+    canvas.drawRect(Offset.zero & size, Paint()..color = p.background);
+
+    final cx = w / 2;
+    final faceCenter = Offset(cx, h * 0.56);
+    final faceR = u * 0.29;
+
+    // 胎毛：先于脸绘制，被脸盖住根部，只在头顶露出一点，像一撮呆毛
+    canvas.drawPath(
+      Path()
+        ..moveTo(cx - u * 0.070, h * 0.310)
+        ..quadraticBezierTo(cx + u * 0.010, h * 0.130, cx + u * 0.070, h * 0.310),
+      Paint()
+        ..color = p.accent
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = u * 0.052
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // 脸
+    canvas.drawCircle(faceCenter, faceR, Paint()..color = p.face);
+
+    // 腮红：叠在脸上（若先于脸绘制会被完全遮住）
+    final blush = Paint()..color = p.accent.withValues(alpha: 0.20);
+    canvas.drawCircle(Offset(cx - u * 0.160, h * 0.690), u * 0.070, blush);
+    canvas.drawCircle(Offset(cx + u * 0.160, h * 0.690), u * 0.070, blush);
+
+    // 眼睛（婴儿比例：眼睛位于脸部中线偏下）
+    final eye = Paint()..color = p.ink;
+    canvas.drawCircle(Offset(cx - u * 0.105, h * 0.585), u * 0.042, eye);
+    canvas.drawCircle(Offset(cx + u * 0.105, h * 0.585), u * 0.042, eye);
+
+    // 微笑
+    canvas.drawPath(
+      Path()
+        ..moveTo(cx - u * 0.072, h * 0.678)
+        ..quadraticBezierTo(cx, h * 0.745, cx + u * 0.072, h * 0.678),
+      Paint()
+        ..color = p.ink
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = u * 0.034
+        ..strokeCap = StrokeCap.round,
     );
   }
 
-  Widget _fallback(String initial) => Text(
-        initial,
-        style: AppText.serifTitle(size: size * 0.42, color: AppColors.pine),
-      );
+  @override
+  bool shouldRepaint(covariant _BabyFacePainter old) => old.p != p;
 }
 
 /// 统一的行内图标按钮，保证 44 命中区

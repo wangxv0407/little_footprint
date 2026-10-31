@@ -44,7 +44,11 @@ class _AddRecordPageState extends State<AddRecordPage> {
   final _contentCtrl = TextEditingController();
   final _tagCtrl = TextEditingController();
   final _tags = <String>[];
-  DateTime _recordTime = DateTime.now();
+
+  /// 记录时间只保留到「天」，时分秒归零
+  DateTime _recordTime = _dateOnly(DateTime.now());
+
+  static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   String _recordType = RecordType.diary;
   String _milestoneCode = '';
@@ -104,7 +108,7 @@ class _AddRecordPageState extends State<AddRecordPage> {
       final r = await db.getGrowthRecord(widget.recordUuid!);
       if (r != null) {
         _existing = r;
-        _recordTime = r.recordTime;
+        _recordTime = _dateOnly(r.recordTime);
         _contentCtrl.text = r.content;
         _tags
           ..clear()
@@ -124,7 +128,7 @@ class _AddRecordPageState extends State<AddRecordPage> {
 
   // ==================== 时间 ====================
 
-  Future<void> _pickDateTime() async {
+  Future<void> _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
@@ -133,46 +137,38 @@ class _AddRecordPageState extends State<AddRecordPage> {
       lastDate: now,
       helpText: '选择发生日期',
       cancelText: '取消',
-      confirmText: '下一步',
-    );
-    if (picked == null) return;
-    if (!mounted) return;
-    final t = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_recordTime),
-      helpText: '选择时间',
-      cancelText: '取消',
       confirmText: '确定',
     );
-    if (!mounted) return;
-    final tt = t ?? TimeOfDay.fromDateTime(_recordTime);
+    if (picked == null) return;
     setState(() {
-      _recordTime = DateTime(picked.year, picked.month, picked.day, tt.hour, tt.minute);
+      // 记录只精确到「天」，时间部分统一归零
+      _recordTime = DateTime(picked.year, picked.month, picked.day);
     });
   }
 
   // ==================== 媒体 ====================
 
   Future<void> _pickImages() async {
-    final perms = await Permission.photos.request();
-    if (!perms.isGranted) {
-      _snack('需要相册权限');
-      return;
-    }
-    final files = await _picker.pickMultiImage();
-    if (files.isNotEmpty) {
-      setState(() => _pickedImagePaths.addAll(files.map((f) => f.path)));
+    // image_picker 走系统选择器（Android 13+ 为 Photo Picker，更早为 ACTION_GET_CONTENT），
+    // 由系统对本次选中的文件授予临时访问权，**不需要**申请相册读取权限。
+    // 之前用 Permission.photos 拦截会误判：Android 14+ 部分授权返回 limited 而非 granted。
+    try {
+      final files = await _picker.pickMultiImage();
+      if (files.isNotEmpty) {
+        setState(() => _pickedImagePaths.addAll(files.map((f) => f.path)));
+      }
+    } catch (e) {
+      _snack('打开相册失败：$e');
     }
   }
 
   Future<void> _pickVideo() async {
-    final perms = await Permission.photos.request();
-    if (!perms.isGranted) {
-      _snack('需要相册权限');
-      return;
+    try {
+      final file = await _picker.pickVideo(source: ImageSource.gallery);
+      if (file != null) setState(() => _pickedVideoPath = file.path);
+    } catch (e) {
+      _snack('打开相册失败：$e');
     }
-    final file = await _picker.pickVideo(source: ImageSource.gallery);
-    if (file != null) setState(() => _pickedVideoPath = file.path);
   }
 
   Future<void> _toggleRecording() async {
@@ -187,9 +183,14 @@ class _AddRecordPageState extends State<AddRecordPage> {
       _snack('录音完成');
       return;
     }
-    final granted = await Permission.microphone.request();
-    if (!granted.isGranted) {
-      _snack('需要麦克风权限');
+    final status = await Permission.microphone.request();
+    if (!status.isGranted && !status.isLimited) {
+      final blocked = status.isPermanentlyDenied || status.isRestricted;
+      _snack(
+        blocked ? '麦克风权限已被关闭，请在系统设置中开启' : '需要麦克风权限才能录音',
+        actionLabel: blocked ? '去设置' : null,
+        onAction: blocked ? () => openAppSettings() : null,
+      );
       return;
     }
     final dir = await MediaService.instance.compressedDir;
@@ -330,9 +331,16 @@ class _AddRecordPageState extends State<AddRecordPage> {
     Navigator.pop(context, true);
   }
 
-  void _snack(String msg) {
+  void _snack(String msg, {String? actionLabel, VoidCallback? onAction}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        action: (actionLabel != null && onAction != null)
+            ? SnackBarAction(label: actionLabel, onPressed: onAction)
+            : null,
+      ),
+    );
   }
 
   String get _recTimeText {
@@ -404,15 +412,27 @@ class _AddRecordPageState extends State<AddRecordPage> {
     );
   }
 
+  /// 切换记录类型。切到「里程碑」时若尚未选定具体条目，直接弹出清单，
+  /// 省掉「切类型 → 再点选择行 → 再选条目」里的中间一步。
+  void _switchType(String type) {
+    if (_recordType == type) return;
+    if (type == RecordType.diary) {
+      setState(() {
+        _recordType = type;
+        _milestoneCode = '';
+      });
+      return;
+    }
+    setState(() => _recordType = type);
+    if (_milestoneCode.isEmpty) _chooseMilestone();
+  }
+
   Widget _typeSelector() {
     Widget item(String type, String label) {
       final on = _recordType == type;
       return Expanded(
         child: GestureDetector(
-          onTap: () => setState(() {
-            _recordType = type;
-            if (type == RecordType.diary) _milestoneCode = '';
-          }),
+          onTap: () => _switchType(type),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             height: 38,
@@ -493,16 +513,16 @@ class _AddRecordPageState extends State<AddRecordPage> {
         ? null
         : AgeCalculator.fullText(baby, _recordTime);
     return GestureDetector(
-      onTap: _pickDateTime,
+      onTap: _pickDate,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: AppDecor.card(radius: AppRadius.md),
         child: Row(
           children: [
-            const Icon(Icons.schedule, size: 18, color: AppColors.clay),
+            const Icon(Icons.calendar_today_outlined, size: 17, color: AppColors.clay),
             const SizedBox(width: 10),
             Text(
-              DateFormat('yyyy-MM-dd HH:mm').format(_recordTime),
+              DateFormat('yyyy-MM-dd').format(_recordTime),
               style: const TextStyle(fontSize: 14, color: AppColors.ink),
             ),
             const Spacer(),

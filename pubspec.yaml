@@ -44,6 +44,7 @@ dependencies:
 
   # 图表（成长曲线）
   fl_chart: ^0.68.0
+  gal: ^2.3.3
 
 dev_dependencies:
   flutter_test:

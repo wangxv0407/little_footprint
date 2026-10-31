@@ -112,7 +112,8 @@ class _BabyManagePageState extends State<BabyManagePage> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.pageX),
                   child: Text(
-                    '切换宝宝后，时间轴、里程碑与成长档案会同步切换。最多可添加 6 个宝宝。',
+                    '点击卡片可修改小名、出生日期和头像；不设置头像时使用默认的简笔头像。\n'
+                    '切换宝宝后，时间轴、里程碑与成长档案会同步切换，最多可添加 6 个。',
                     style: AppText.caption.copyWith(height: 1.8),
                   ),
                 ),

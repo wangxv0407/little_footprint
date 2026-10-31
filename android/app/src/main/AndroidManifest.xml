@@ -9,17 +9,19 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <!-- 录音 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- 读取相册（按安卓版本动态申请） -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <!-- 导出 ZIP 备份、保存图片到相册 -->
+    <!--
+      相册读取权限（READ_MEDIA_IMAGES / READ_MEDIA_VIDEO）刻意不声明：
+      image_picker 通过系统选择器取图，由系统对选中文件授予临时访问权，
+      申请该权限反而会在设置里出现一个用不到的开关，并可能被误判为未授权。
+    -->
+    <!-- 导出 ZIP 备份、保存图片到相册（仅旧系统需要） -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
 
     <application
         android:label="小脚印成长记"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"
         android:theme="@style/LaunchTheme"
         android:usesCleartextTraffic="true"
@@ -49,6 +51,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Android 11+ 包可见性：调用系统相机拍摄头像 -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <!-- 系统相册选择器 -->
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="image/*" />
         </intent>
     </queries>
 </manifest>

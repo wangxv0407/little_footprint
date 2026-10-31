@@ -133,7 +133,7 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
             const SizedBox(height: AppSpace.md),
           ],
           Text(
-            DateFormat('yyyy 年 M 月 d 日 · HH:mm').format(r.recordTime),
+            DateFormat('yyyy 年 M 月 d 日').format(r.recordTime),
             style: TextStyle(
               fontFamily: AppFonts.serif,
               fontFamilyFallback: AppFonts.serifFallback,

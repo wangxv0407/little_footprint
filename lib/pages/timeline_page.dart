@@ -436,7 +436,7 @@ class TimelinePageState extends State<TimelinePage> {
               ),
             ),
           Text(
-            '${DateFormat('HH:mm').format(r.recordTime)} · ${r.authorLabel}',
+            r.authorLabel.isEmpty ? '记录' : r.authorLabel,
             style: AppText.meta,
           ),
           if (r.content.isNotEmpty) ...[

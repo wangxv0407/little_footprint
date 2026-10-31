@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../db/app_database.dart';
 import '../models/baby_info.dart';
+import '../services/media_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
@@ -17,8 +21,10 @@ class BabyInfoPage extends StatefulWidget {
 
 class _BabyInfoPageState extends State<BabyInfoPage> {
   final _nameCtrl = TextEditingController();
+  final _picker = ImagePicker();
   DateTime? _birthDate;
   int _gender = 0;
+  String _avatarPath = '';
   bool _saving = false;
 
   bool get _isEdit => widget.initial != null;
@@ -31,6 +37,7 @@ class _BabyInfoPageState extends State<BabyInfoPage> {
       _nameCtrl.text = b.babyName;
       _birthDate = b.birthDate;
       _gender = b.gender;
+      _avatarPath = b.avatarPath;
     }
   }
 
@@ -38,6 +45,18 @@ class _BabyInfoPageState extends State<BabyInfoPage> {
   void dispose() {
     _nameCtrl.dispose();
     super.dispose();
+  }
+
+  /// 用于实时预览头像的临时档案（新增时还没有真实记录）
+  BabyInfo get _preview {
+    final name = _nameCtrl.text.trim();
+    return BabyInfo(
+      id: widget.initial?.id ?? 0,
+      babyName: name.isEmpty ? '宝宝' : name,
+      birthDate: _birthDate ?? DateTime.now(),
+      avatarPath: _avatarPath,
+      gender: _gender,
+    );
   }
 
   Future<void> _pickDate() async {
@@ -54,6 +73,66 @@ class _BabyInfoPageState extends State<BabyInfoPage> {
     if (picked != null) setState(() => _birthDate = picked);
   }
 
+  Future<void> _showAvatarSheet() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.paper,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined, color: AppColors.ink2),
+              title: const Text('拍一张', style: TextStyle(fontSize: 14)),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.ink2),
+              title: const Text('从相册选择', style: TextStyle(fontSize: 14)),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            if (_avatarPath.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Color(0xFFB3261E)),
+                title: const Text('移除头像',
+                    style: TextStyle(fontSize: 14, color: Color(0xFFB3261E))),
+                onTap: () => Navigator.pop(ctx, 'remove'),
+              ),
+            const SizedBox(height: 6),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+
+    if (action == 'remove') {
+      setState(() => _avatarPath = '');
+      return;
+    }
+
+    final source = action == 'camera' ? ImageSource.camera : ImageSource.gallery;
+    try {
+      final picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 640,
+        maxHeight: 640,
+        imageQuality: 88,
+      );
+      if (picked == null) return;
+      final saved = await MediaService.instance.storeAvatar(picked.path);
+      if (!mounted) return;
+      setState(() => _avatarPath = saved);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('设置头像失败：$e')));
+    }
+  }
+
   Future<void> _save() async {
     if (_birthDate == null || _saving) return;
     setState(() => _saving = true);
@@ -65,12 +144,15 @@ class _BabyInfoPageState extends State<BabyInfoPage> {
           babyName: name,
           birthDate: _birthDate,
           gender: _gender,
+          avatarPath: _avatarPath,
         ));
+        await _cleanupOldAvatar();
       } else {
         await db.insertBaby(BabyInfo(
           babyName: name.isEmpty ? '宝宝' : name,
           birthDate: _birthDate!,
           gender: _gender,
+          avatarPath: _avatarPath,
         ));
       }
       if (!mounted) return;
@@ -80,6 +162,18 @@ class _BabyInfoPageState extends State<BabyInfoPage> {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('保存失败：$e')));
+    }
+  }
+
+  /// 头像被替换或清除时，删掉磁盘上的旧文件
+  Future<void> _cleanupOldAvatar() async {
+    final old = widget.initial?.avatarPath ?? '';
+    if (old.isEmpty || old == _avatarPath) return;
+    try {
+      final f = File(old);
+      if (await f.exists()) await f.delete();
+    } catch (_) {
+      // 旧文件清理失败不影响保存结果
     }
   }
 
@@ -148,6 +242,8 @@ class _BabyInfoPageState extends State<BabyInfoPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(AppSpace.pageX, 6, AppSpace.pageX, 30),
         children: [
+          const SizedBox(height: AppSpace.md),
+          _avatarSection(),
           _label('小名'),
           TextField(
             controller: _nameCtrl,
@@ -217,6 +313,41 @@ class _BabyInfoPageState extends State<BabyInfoPage> {
       ),
     );
   }
+
+  Widget _avatarSection() => Center(
+        child: Column(
+          children: [
+            GestureDetector(
+              onTap: _showAvatarSheet,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  BabyAvatar(baby: _preview, size: 88, radius: 28),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: AppColors.clay,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.paper, width: 2),
+                      ),
+                      child: const Icon(Icons.photo_camera_outlined,
+                          size: 13, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _avatarPath.isEmpty ? '点击设置头像' : '点击更换头像',
+              style: AppText.caption,
+            ),
+          ],
+        ),
+      );
 
   Widget _label(String text) => Padding(
         padding: const EdgeInsets.only(top: AppSpace.lg, bottom: 8),

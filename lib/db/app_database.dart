@@ -475,7 +475,10 @@ class AppDatabase {
         break;
     }
 
-    final sql = StringBuffer('SELECT r.* FROM growth_record r WHERE $where ORDER BY r.record_time DESC');
+    // 记录时间已精确到「天」，同日多条按最后写入时间倒序，保证顺序稳定
+    final sql = StringBuffer(
+        'SELECT r.* FROM growth_record r WHERE $where '
+        'ORDER BY r.record_time DESC, r.last_modify_ts DESC');
     if (limit != null) {
       sql.write(' LIMIT $limit OFFSET $offset');
     }
@@ -550,7 +553,8 @@ class AppDatabase {
     }
 
     final rows = await db.rawQuery(
-      'SELECT r.* FROM growth_record r WHERE $where ORDER BY r.record_time DESC LIMIT 200',
+      'SELECT r.* FROM growth_record r WHERE $where '
+      'ORDER BY r.record_time DESC, r.last_modify_ts DESC LIMIT 200',
       args,
     );
     return rows.map(GrowthRecord.fromMap).toList();

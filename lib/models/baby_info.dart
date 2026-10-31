@@ -5,7 +5,7 @@ class BabyInfo {
   final String babyName;
   final DateTime birthDate;
 
-  /// 头像相对路径（记录目录下），空串表示无头像
+  /// 头像的绝对路径（存放在应用私有目录 avatars/ 下），空串表示无头像
   final String avatarPath;
 
   /// 0 未知 / 1 男 / 2 女
