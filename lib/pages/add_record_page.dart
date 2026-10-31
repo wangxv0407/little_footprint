@@ -12,12 +12,29 @@ import 'package:uuid/uuid.dart';
 import '../db/app_database.dart';
 import '../models/growth_record.dart';
 import '../models/media_item.dart';
+import '../models/milestone_def.dart';
+import '../models/record_type.dart';
 import '../services/media_service.dart';
 import '../theme.dart';
-import '../widgets/tag_wrap.dart';
+import '../utils/age_calculator.dart';
+import '../widgets/common.dart';
 
+/// 新增 / 编辑记录
 class AddRecordPage extends StatefulWidget {
-  const AddRecordPage({super.key});
+  final int babyId;
+
+  /// 从里程碑页进入时预选
+  final String? initialMilestoneCode;
+
+  /// 有值表示编辑模式
+  final String? recordUuid;
+
+  const AddRecordPage({
+    super.key,
+    required this.babyId,
+    this.initialMilestoneCode,
+    this.recordUuid,
+  });
 
   @override
   State<AddRecordPage> createState() => _AddRecordPageState();
@@ -29,6 +46,13 @@ class _AddRecordPageState extends State<AddRecordPage> {
   final _tags = <String>[];
   DateTime _recordTime = DateTime.now();
 
+  String _recordType = RecordType.diary;
+  String _milestoneCode = '';
+
+  GrowthRecord? _existing;
+  List<MediaItem> _existingMedia = const [];
+  final Set<int> _removedMediaIds = {};
+
   final _picker = ImagePicker();
   final _recorder = AudioRecorder();
   bool _recording = false;
@@ -36,10 +60,24 @@ class _AddRecordPageState extends State<AddRecordPage> {
   int _recordSeconds = 0;
   Timer? _recordTimer;
 
-  List<String> _pickedImagePaths = [];
+  final _pickedImagePaths = <String>[];
   String? _pickedVideoPath;
 
+  bool _saving = false;
+  bool _loading = true;
+  String _rootPath = '';
+  DateTime? _babyBirthForAge;
+  Map<String, MilestoneDef> _msDefs = const {};
+
   static const _presetTags = ['翻身', '辅食', '疫苗', '出游', '学说话'];
+
+  bool get _isEdit => widget.recordUuid != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
 
   @override
   void dispose() {
@@ -50,20 +88,70 @@ class _AddRecordPageState extends State<AddRecordPage> {
     super.dispose();
   }
 
-  Future<void> _pickTime() async {
+  Future<void> _bootstrap() async {
+    final db = AppDatabase.instance;
+    _rootPath = (await MediaService.instance.recordsRoot).path;
+    _babyBirthForAge = (await db.getBabyById(widget.babyId))?.birthDate;
+    final defs = await db.getMilestoneDefs();
+    final map = {for (final d in defs) d.code: d};
+
+    if (widget.initialMilestoneCode != null) {
+      _recordType = RecordType.milestone;
+      _milestoneCode = widget.initialMilestoneCode!;
+    }
+
+    if (_isEdit) {
+      final r = await db.getGrowthRecord(widget.recordUuid!);
+      if (r != null) {
+        _existing = r;
+        _recordTime = r.recordTime;
+        _contentCtrl.text = r.content;
+        _tags
+          ..clear()
+          ..addAll(r.tags);
+        _recordType = r.recordType;
+        _milestoneCode = r.milestoneCode;
+        _existingMedia = await db.getMediaForRecord(r.uuid);
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _msDefs = map;
+      _loading = false;
+    });
+  }
+
+  // ==================== 时间 ====================
+
+  Future<void> _pickDateTime() async {
+    final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: _recordTime,
-      firstDate: DateTime(DateTime.now().year - 3),
-      lastDate: DateTime.now(),
+      firstDate: DateTime(now.year - 18),
+      lastDate: now,
+      helpText: '选择发生日期',
+      cancelText: '取消',
+      confirmText: '下一步',
     );
-    if (picked != null) {
-      final t = TimeOfDay.fromDateTime(_recordTime);
-      setState(() {
-        _recordTime = DateTime(picked.year, picked.month, picked.day, t.hour, t.minute);
-      });
-    }
+    if (picked == null) return;
+    if (!mounted) return;
+    final t = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_recordTime),
+      helpText: '选择时间',
+      cancelText: '取消',
+      confirmText: '确定',
+    );
+    if (!mounted) return;
+    final tt = t ?? TimeOfDay.fromDateTime(_recordTime);
+    setState(() {
+      _recordTime = DateTime(picked.year, picked.month, picked.day, tt.hour, tt.minute);
+    });
   }
+
+  // ==================== 媒体 ====================
 
   Future<void> _pickImages() async {
     final perms = await Permission.photos.request();
@@ -73,9 +161,7 @@ class _AddRecordPageState extends State<AddRecordPage> {
     }
     final files = await _picker.pickMultiImage();
     if (files.isNotEmpty) {
-      setState(() {
-        _pickedImagePaths.addAll(files.map((f) => f.path).toList());
-      });
+      setState(() => _pickedImagePaths.addAll(files.map((f) => f.path)));
     }
   }
 
@@ -86,40 +172,42 @@ class _AddRecordPageState extends State<AddRecordPage> {
       return;
     }
     final file = await _picker.pickVideo(source: ImageSource.gallery);
-    if (file != null) {
-      setState(() => _pickedVideoPath = file.path);
-    }
+    if (file != null) setState(() => _pickedVideoPath = file.path);
   }
 
   Future<void> _toggleRecording() async {
     if (_recording) {
       _recordTimer?.cancel();
       final path = await _recorder.stop();
+      if (!mounted) return;
       setState(() {
         _recording = false;
         _recordedPath = path;
       });
       _snack('录音完成');
-    } else {
-      final granted = await Permission.microphone.request();
-      if (!granted.isGranted) {
-        _snack('需要麦克风权限');
-        return;
-      }
-      final dir = await MediaService.instance.compressedDir;
-      final path = p.join(dir.path, 'rec_${DateTime.now().millisecondsSinceEpoch}.aac');
-      await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
-      setState(() {
-        _recording = true;
-        _recordSeconds = 0;
-      });
-      _recordTimer?.cancel();
-      _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted) return;
-        setState(() => _recordSeconds++);
-      });
+      return;
     }
+    final granted = await Permission.microphone.request();
+    if (!granted.isGranted) {
+      _snack('需要麦克风权限');
+      return;
+    }
+    final dir = await MediaService.instance.compressedDir;
+    final path = p.join(dir.path, 'rec_${DateTime.now().millisecondsSinceEpoch}.aac');
+    await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
+    if (!mounted) return;
+    setState(() {
+      _recording = true;
+      _recordSeconds = 0;
+    });
+    _recordTimer?.cancel();
+    _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _recordSeconds++);
+    });
   }
+
+  // ==================== 标签 ====================
 
   void _addTag([String? value]) {
     final v = (value ?? _tagCtrl.text).trim();
@@ -134,24 +222,62 @@ class _AddRecordPageState extends State<AddRecordPage> {
     });
   }
 
+  // ==================== 保存 ====================
+
   Future<void> _save() async {
+    if (_saving) return;
+    if (_recording) {
+      _snack('请先停止录音');
+      return;
+    }
+    if (_recordType == RecordType.milestone && _milestoneCode.isEmpty) {
+      _snack('请选择一个里程碑');
+      return;
+    }
+
     final db = AppDatabase.instance;
     final media = MediaService.instance;
-    final uuid = const Uuid().v4();
+
+    if (_recordType == RecordType.milestone && !_isEdit) {
+      final achieved = await db.isMilestoneAchieved(widget.babyId, _milestoneCode);
+      if (achieved) {
+        final def = _msDefs[_milestoneCode];
+        _snack('「${def?.name ?? '该里程碑'}」已经记录过了');
+        return;
+      }
+    }
+
+    setState(() => _saving = true);
+
     final ts = DateTime.now().millisecondsSinceEpoch;
+    final uuid = _isEdit ? _existing!.uuid : const Uuid().v4();
+    final role = await db.getDeviceRole();
 
     final record = GrowthRecord(
       uuid: uuid,
+      babyId: widget.babyId,
       recordTime: _recordTime,
       content: _contentCtrl.text.trim(),
       tags: List.of(_tags),
-      createDevice: (await db.getBabyInfo())?.deviceRole ?? 'husband',
+      recordType: _recordType,
+      milestoneCode: _recordType == RecordType.milestone ? _milestoneCode : '',
+      isFavorite: _existing?.isFavorite ?? 0,
+      createDevice: _existing?.createDevice ?? role,
       lastModifyTs: ts,
       isDeleted: 0,
     );
     await db.upsertGrowthRecord(record);
 
-    // 照片：生成压缩预览图（参与同步），原图保留在用户相册
+    // 编辑模式：移除被删掉的媒体
+    if (_isEdit) {
+      final keep = _existingMedia
+          .where((m) => !_removedMediaIds.contains(m.id))
+          .map((m) => m.id)
+          .toList();
+      await db.retainMedia(uuid, keep);
+    }
+
+    // 新增照片：压缩后入库
     for (final path in _pickedImagePaths) {
       try {
         final r = await media.createCompressedImage(path);
@@ -165,12 +291,12 @@ class _AddRecordPageState extends State<AddRecordPage> {
           fileSize: r.$4,
           isOrigin: 0,
         ));
-      } catch (e) {
-        _snack('图片处理失败: $e');
+      } catch (_) {
+        _snack('有图片处理失败，已跳过');
       }
     }
 
-    // 录音：复制到 compressed（参与同步）
+    // 录音
     if (_recordedPath != null && await File(_recordedPath!).exists()) {
       final r = await media.storeRecording(_recordedPath!);
       await db.insertMedia(MediaItem(
@@ -185,7 +311,7 @@ class _AddRecordPageState extends State<AddRecordPage> {
       ));
     }
 
-    // 视频：MVP 仅本机保存原视频（is_origin=1，不参与跨机同步）
+    // 视频：本期仍只存本机原片，不参与跨机同步
     if (_pickedVideoPath != null && await File(_pickedVideoPath!).exists()) {
       final r = await media.storeOrigin(_pickedVideoPath!);
       await db.insertMedia(MediaItem(
@@ -201,10 +327,11 @@ class _AddRecordPageState extends State<AddRecordPage> {
     }
 
     if (!mounted) return;
-    Navigator.pop(context);
+    Navigator.pop(context, true);
   }
 
   void _snack(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
@@ -214,313 +341,583 @@ class _AddRecordPageState extends State<AddRecordPage> {
     return '$m:$s';
   }
 
+  // ==================== UI ====================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('新增记录')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: AppColors.paper,
+      appBar: AppBar(
+        backgroundColor: AppColors.paper,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        titleSpacing: AppSpace.xs,
+        title: Row(
           children: [
-            // 发生时间
-            _sectionLabel('发生时间'),
-            InkWell(
-              onTap: _pickTime,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.schedule, color: AppColors.primary, size: 20),
-                    const SizedBox(width: 10),
-                    Text(
-                      DateFormat('yyyy-MM-dd HH:mm').format(_recordTime),
-                      style: const TextStyle(fontSize: 15, color: AppColors.textMain),
-                    ),
-                  ],
-                ),
-              ),
+            TextButton(
+              onPressed: () => Navigator.maybePop(context),
+              style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
+              child: const Text('取消'),
             ),
-            const SizedBox(height: 16),
-            // 文字日记
-            _sectionLabel('文字日记'),
-            TextField(
-              controller: _contentCtrl,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                hintText: '写下此刻的小事…',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+            const Spacer(),
+            Text(
+              _isEdit ? '编辑记录' : '新增记录',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 16),
-            // 标签
-            _sectionLabel('标签'),
-            TextField(
-              controller: _tagCtrl,
-              onSubmitted: _addTag,
-              decoration: const InputDecoration(
-                hintText: '输入标签后回车添加',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+            const Spacer(),
+            TextButton(
+              onPressed: _saving ? null : _save,
+              child: const Text('保存'),
             ),
-            if (_tags.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              TagWrap(tags: _tags, onDelete: (t) => setState(() => _tags.remove(t))),
-            ],
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              children: _presetTags
-                  .where((t) => !_tags.contains(t))
-                  .map((t) => ActionChip(
-                        label: Text(t, style: const TextStyle(fontSize: 12)),
-                        onPressed: () => _addTag(t),
-                      ))
-                  .toList(),
-            ),
-            const SizedBox(height: 20),
-            // 媒体：照片 / 录音 / 视频 三个 Tab（对齐 UI 设计稿）
-            _sectionLabel('媒体'),
-            const SizedBox(height: 4),
-            _mediaTabs(),
-            const SizedBox(height: 24),
-            // 底部操作：取消 / 保存（对齐 UI 设计稿）
-            Row(
+          ],
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.clay))
+          : Column(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: AppColors.divider),
-                    ),
-                    child: const Text('取消'),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(AppSpace.pageX, 4, AppSpace.pageX, 20),
+                    children: [
+                      _typeSelector(),
+                      const SizedBox(height: AppSpace.md),
+                      if (_recordType == RecordType.milestone) _milestonePicker(),
+                      _label('发生时间'),
+                      _timeRow(),
+                      _label('此刻发生了什么'),
+                      _contentField(),
+                      _label('标签'),
+                      _tagArea(),
+                      _label('照片与声音'),
+                      _mediaGrid(),
+                      const SizedBox(height: AppSpace.xs),
+                      const Text('图片与录音会同步到另一台手机；视频目前只保存在本机',
+                          style: AppText.caption),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _save,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text('保存'),
-                  ),
-                ),
+                _bottomBar(),
               ],
             ),
+    );
+  }
+
+  Widget _typeSelector() {
+    Widget item(String type, String label) {
+      final on = _recordType == type;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => setState(() {
+            _recordType = type;
+            if (type == RecordType.diary) _milestoneCode = '';
+          }),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: on ? AppColors.card : Colors.transparent,
+              borderRadius: BorderRadius.circular(9),
+              boxShadow: on
+                  ? const [BoxShadow(color: Color(0x142B2724), blurRadius: 4, offset: Offset(0, 1))]
+                  : null,
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: on ? FontWeight.w600 : FontWeight.w400,
+                color: on ? AppColors.ink : AppColors.ink2,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFE7DA),
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Row(children: [item(RecordType.diary, '日常'), item(RecordType.milestone, '里程碑')]),
+    );
+  }
+
+  Widget _milestonePicker() {
+    final def = _msDefs[_milestoneCode];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.md),
+      child: AppCard(
+        padding: const EdgeInsets.all(14),
+        border: Border.all(color: AppColors.line),
+        onTap: _chooseMilestone,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(def == null ? '选择里程碑' : '已选择',
+                      style: AppText.caption.copyWith(letterSpacing: 1.2)),
+                  const SizedBox(height: 4),
+                  Text(
+                    def?.name ?? '从里程碑库里挑一个',
+                    style: def == null
+                        ? AppText.itemTitle.copyWith(color: AppColors.ink3)
+                        : AppText.serifTitle(size: 17),
+                  ),
+                  if (def != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '${MilestoneCategory.label(def.category)} · 建议 ${def.monthRangeLabel}',
+                      style: AppText.caption,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3),
           ],
         ),
       ),
     );
   }
 
-  Widget _sectionLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14, color: AppColors.secondaryText, fontWeight: FontWeight.w600),
+  Widget _timeRow() {
+    final baby = _babyBirthForAge;
+    final ageText = baby == null
+        ? null
+        : AgeCalculator.fullText(baby, _recordTime);
+    return GestureDetector(
+      onTap: _pickDateTime,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: AppDecor.card(radius: AppRadius.md),
+        child: Row(
+          children: [
+            const Icon(Icons.schedule, size: 18, color: AppColors.clay),
+            const SizedBox(width: 10),
+            Text(
+              DateFormat('yyyy-MM-dd HH:mm').format(_recordTime),
+              style: const TextStyle(fontSize: 14, color: AppColors.ink),
+            ),
+            const Spacer(),
+            if (ageText != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.pineLight,
+                  borderRadius: AppRadius.pill,
+                ),
+                child: Text(
+                  ageText,
+                  style: const TextStyle(fontSize: 10.5, color: AppColors.pine),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _mediaTabs() {
-    return DefaultTabController(
-      length: 3,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0EFEA),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TabBar(
-              indicator: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
+  Widget _contentField() {
+    return TextField(
+      controller: _contentCtrl,
+      maxLines: 6,
+      minLines: 3,
+      style: const TextStyle(fontSize: 14.5, height: 1.7, color: AppColors.ink),
+      decoration: InputDecoration(
+        hintText: '写下此刻的小事…',
+        hintStyle: const TextStyle(color: AppColors.ink3, fontSize: 14),
+        filled: true,
+        fillColor: AppColors.card,
+        contentPadding: const EdgeInsets.all(14),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.line),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.clay, width: 1.4),
+        ),
+      ),
+    );
+  }
+
+  Widget _tagArea() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final t in _tags)
+              GestureDetector(
+                onTap: () => setState(() => _tags.remove(t)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.clayLight,
+                    borderRadius: AppRadius.pill,
+                    border: Border.all(color: const Color(0xFFE9C9BA)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(t,
+                          style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppColors.clayDark,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.close, size: 12, color: AppColors.clayDark),
+                    ],
+                  ),
+                ),
               ),
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.secondaryText,
-              labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              unselectedLabelStyle: const TextStyle(fontSize: 14),
-              dividerColor: Colors.transparent,
-              tabs: const [
-                Tab(text: '照片'),
-                Tab(text: '录音'),
-                Tab(text: '视频'),
-              ],
+            for (final t in _presetTags.where((t) => !_tags.contains(t)))
+              AppChip(label: t, onTap: () => _addTag(t)),
+            GestureDetector(
+              onTap: _promptNewTag,
+              child: AppChip(label: '+ 新建', dashed: true),
             ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 240,
-            child: TabBarView(
-              children: [_photoTab(), _audioTab(), _videoTab()],
-            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _promptNewTag() async {
+    _tagCtrl.clear();
+    final v = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.paper,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: const Text('新建标签', style: TextStyle(fontSize: 16)),
+        content: TextField(
+          controller: _tagCtrl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '例如：第一次游泳'),
+          onSubmitted: (v) => Navigator.pop(ctx, v),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, _tagCtrl.text),
+            child: const Text('添加'),
           ),
         ],
       ),
     );
+    if (v != null) _addTag(v);
   }
 
-  Widget _photoTab() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final path in _pickedImagePaths)
-                Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(File(path), width: 80, height: 80, fit: BoxFit.cover),
-                    ),
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _pickedImagePaths.remove(path)),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(Icons.close, size: 14, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              GestureDetector(
-                onTap: _pickImages,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: AppColors.lightGreen,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.add_a_photo, color: AppColors.primary),
+  Widget _mediaGrid() {
+    final items = <Widget>[];
+
+    // 编辑模式：已有媒体
+    for (final m in _existingMedia) {
+      if (_removedMediaIds.contains(m.id)) continue;
+      items.add(_thumbTile(
+        child: m.fileType == 'image'
+            ? Image.file(File(p.join(_rootPath, m.localRelativePath)),
+                fit: BoxFit.cover, errorBuilder: (_, __, ___) => _broken())
+            : Center(
+                child: Icon(
+                  m.fileType == 'audio' ? Icons.graphic_eq : Icons.videocam,
+                  color: AppColors.pine,
+                  size: 26,
                 ),
               ),
+        onRemove: () => setState(() => _removedMediaIds.add(m.id)),
+      ));
+    }
+
+    // 新选图片
+    for (final path in _pickedImagePaths) {
+      items.add(_thumbTile(
+        child: Image.file(File(path), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _broken()),
+        onRemove: () => setState(() => _pickedImagePaths.remove(path)),
+      ));
+    }
+
+    // 新录音
+    if (_recordedPath != null) {
+      items.add(_thumbTile(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.graphic_eq, color: AppColors.clay, size: 24),
+            const SizedBox(height: 2),
+            Text('已录音', style: AppText.caption.copyWith(color: AppColors.clay)),
+          ],
+        ),
+        onRemove: () => setState(() => _recordedPath = null),
+      ));
+    }
+
+    // 新视频
+    if (_pickedVideoPath != null) {
+      items.add(_thumbTile(
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.videocam, color: AppColors.pine, size: 24),
+            SizedBox(height: 2),
+            Text('已选择', style: AppText.caption),
+          ],
+        ),
+        onRemove: () => setState(() => _pickedVideoPath = null),
+      ));
+    }
+
+    // 添加按钮
+    items.add(
+      GestureDetector(
+        onTap: _showMediaSheet,
+        child: Container(
+          decoration: AppDecor.dashed(),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add, color: AppColors.ink3, size: 24),
+              SizedBox(height: 4),
+              Text('添加', style: TextStyle(fontSize: 10.5, color: AppColors.ink3)),
             ],
           ),
-          const SizedBox(height: 10),
-          const Text('压缩预览图参与同步，原图保留在手机相册',
-              style: TextStyle(fontSize: 11, color: Color(0xFFB0B0B0))),
-        ],
+        ),
       ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, c) {
+        const gap = 8.0;
+        final size = (c.maxWidth - gap * 2) / 3;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final w in items) SizedBox(width: size, height: size, child: w),
+          ],
+        );
+      },
     );
   }
 
-  Widget _audioTab() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: _toggleRecording,
+  Widget _broken() => Container(color: AppColors.line);
+
+  Widget _thumbTile({
+    required Widget child,
+    required VoidCallback onRemove,
+  }) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: Container(color: AppColors.clayLight, child: child),
+          ),
+        ),
+        Positioned(
+          right: 3,
+          top: 3,
+          child: GestureDetector(
+            onTap: onRemove,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
-              decoration: BoxDecoration(
-                color: _recording ? Colors.red.withValues(alpha: 0.08) : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _recording ? Colors.redAccent : AppColors.divider),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _recording ? Icons.stop_circle_outlined : Icons.mic,
-                    color: _recording ? Colors.redAccent : AppColors.primary,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _recording
-                          ? '正在录音…点击停止'
-                          : (_recordedPath != null ? '已录音 · 点击重新录制' : '点击开始录音（AAC）'),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _recording ? Colors.redAccent : AppColors.textMain,
-                      ),
-                    ),
-                  ),
-                  if (_recording || _recordedPath != null)
-                    Text(
-                      _recTimeText,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: _recording ? Colors.redAccent : AppColors.primary,
-                      ),
-                    ),
-                ],
-              ),
+              width: 20,
+              height: 20,
+              decoration: const BoxDecoration(color: Color(0x99000000), shape: BoxShape.circle),
+              child: const Icon(Icons.close, size: 13, color: Colors.white),
             ),
           ),
-          const SizedBox(height: 10),
-          const Text('录音将全量同步到另一台设备',
-              style: TextStyle(fontSize: 11, color: Color(0xFFB0B0B0))),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _videoTab() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: _pickVideo,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Row(
+  Future<void> _showMediaSheet() async {
+    final pick = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.paper,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 14),
+            const Text('添加媒体', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.clay),
+              title: const Text('照片', style: AppText.itemTitle),
+              subtitle: const Text('可多选', style: AppText.caption),
+              onTap: () => Navigator.pop(ctx, 'photo'),
+            ),
+            ListTile(
+              leading: Icon(_recording ? Icons.stop_circle_outlined : Icons.mic_none,
+                  color: AppColors.clay),
+              title: Text(_recording ? '停止录音' : '录音', style: AppText.itemTitle),
+              subtitle: Text(_recording ? _recTimeText : '最长 10 分钟',
+                  style: AppText.caption),
+              onTap: () => Navigator.pop(ctx, 'audio'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam_outlined, color: AppColors.clay),
+              title: const Text('视频', style: AppText.itemTitle),
+              subtitle: const Text('仅保存在本机', style: AppText.caption),
+              onTap: () => Navigator.pop(ctx, 'video'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    switch (pick) {
+      case 'photo':
+        await _pickImages();
+      case 'audio':
+        await _toggleRecording();
+      case 'video':
+        await _pickVideo();
+    }
+  }
+
+  Future<void> _chooseMilestone() async {
+    final defs = await AppDatabase.instance.getMilestoneDefs();
+    final achieved = await AppDatabase.instance.getMilestoneStatuses(widget.babyId);
+    final achievedCodes = {for (final s in achieved.where((e) => e.achieved)) s.def.code};
+    if (!mounted) return;
+
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.paper,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        maxChildSize: 0.92,
+        minChildSize: 0.5,
+        expand: false,
+        builder: (_, scrollCtrl) {
+          var category = MilestoneCategory.motorGross;
+          return StatefulBuilder(
+            builder: (ctx2, setSheet) {
+              final list = defs.where((d) => d.category == category).toList();
+              return Column(
                 children: [
-                  const Icon(Icons.videocam, color: AppColors.primary, size: 28),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _pickedVideoPath == null ? '选择视频（MP4）' : '已选择视频 · 点击更换',
-                      style: const TextStyle(fontSize: 14, color: AppColors.textMain),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.lineStrong,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  if (_pickedVideoPath != null)
-                    const Icon(Icons.check_circle, color: AppColors.primary),
+                  const SizedBox(height: 12),
+                  const Text('选择里程碑',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 40,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.pageX),
+                      itemCount: MilestoneCategory.ordered.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (_, i) {
+                        final c = MilestoneCategory.ordered[i];
+                        return Center(
+                          child: AppChip(
+                            label: MilestoneCategory.label(c),
+                            selected: category == c,
+                            onTap: () => setSheet(() => category = c),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollCtrl,
+                      itemCount: list.length,
+                      itemBuilder: (_, i) {
+                        final d = list[i];
+                        final done = achievedCodes.contains(d.code);
+                        return ListTile(
+                          title: Text(
+                            d.name,
+                            style: AppText.itemTitle.copyWith(
+                              color: done ? AppColors.ink3 : AppColors.ink,
+                            ),
+                          ),
+                          subtitle: Text(
+                            done ? '已达成' : '建议 ${d.monthRangeLabel}',
+                            style: AppText.caption,
+                          ),
+                          trailing: done
+                              ? const Icon(Icons.check_circle,
+                                  size: 18, color: AppColors.pineLight)
+                              : const Icon(Icons.chevron_right,
+                                  size: 18, color: AppColors.ink3),
+                          onTap: () => Navigator.pop(ctx, d.code),
+                        );
+                      },
+                    ),
+                  ),
                 ],
-              ),
+              );
+            },
+          );
+        },
+      ),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _recordType = RecordType.milestone;
+        _milestoneCode = picked;
+      });
+    }
+  }
+
+  Widget _label(String text) => Padding(
+        padding: const EdgeInsets.only(top: AppSpace.lg, bottom: AppSpace.xs),
+        child: Text(
+          text,
+          style: AppText.caption.copyWith(fontWeight: FontWeight.w600, letterSpacing: 1.2),
+        ),
+      );
+
+  Widget _bottomBar() {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(AppSpace.pageX, AppSpace.sm, AppSpace.pageX, AppSpace.sm),
+        decoration: const BoxDecoration(
+          color: Color(0xF0FBF8F3),
+          border: Border(top: BorderSide(color: AppColors.line)),
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: _saving ? null : _save,
+            child: Text(
+              _saving ? '保存中…' : (_isEdit ? '保存修改' : '保存这条记录'),
             ),
           ),
-          const SizedBox(height: 10),
-          const Text('MVP 视频仅保存在本机，不跨机同步；请自行硬盘备份',
-              style: TextStyle(fontSize: 11, color: Color(0xFFB0B0B0))),
-        ],
+        ),
       ),
     );
   }

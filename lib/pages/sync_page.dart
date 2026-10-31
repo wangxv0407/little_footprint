@@ -45,9 +45,9 @@ class _SyncPageState extends State<SyncPage> {
   }
 
   Future<void> _loadRole() async {
-    final info = await AppDatabase.instance.getBabyInfo();
+    final role = await AppDatabase.instance.getDeviceRole();
     if (mounted) {
-      setState(() => _role = info?.deviceRole == 'wife' ? '妈妈设备' : '爸爸设备');
+      setState(() => _role = AppDatabase.deviceRoleLabel(role));
     }
   }
 

@@ -254,6 +254,11 @@ packages:
       url: "https://mirrors.cloud.tencent.com/dart-pub/"
     source: hosted
     version: "4.0.0"
+  flutter_localizations:
+    dependency: "direct main"
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -636,42 +641,50 @@ packages:
     dependency: "direct main"
     description:
       name: record
-      sha256: a1c8d6023811dd718ab4c93736bf31f247a7ec37a82f3a5b52cf0751cc5225bb
+      sha256: "10911465138fafacef459a780564e883e01bd48eabf87ab20543684884492870"
       url: "https://mirrors.cloud.tencent.com/dart-pub/"
     source: hosted
-    version: "5.0.0"
+    version: "6.2.1"
   record_android:
-    dependency: "direct overridden"
-    description:
-      name: record_android
-      sha256: "004e2a134a110059d0bf5b43e3c0debbbb0d2f62dab277a7090334391fafad94"
-      url: "https://mirrors.cloud.tencent.com/dart-pub/"
-    source: hosted
-    version: "1.0.0"
-  record_darwin:
     dependency: transitive
     description:
-      name: record_darwin
-      sha256: e487eccb19d82a9a39cd0126945cfc47b9986e0df211734e2788c95e3f63c82c
+      name: record_android
+      sha256: eb1732e42d0d2a1895b8db86e4fc917287e6d8491b6ed59918aea8bed6c69de4
       url: "https://mirrors.cloud.tencent.com/dart-pub/"
     source: hosted
-    version: "1.2.2"
+    version: "1.5.2"
+  record_ios:
+    dependency: transitive
+    description:
+      name: record_ios
+      sha256: c051fb48edd7a0e265daafb9108730dc827c27b551728a3fdfb3ef69efd89c73
+      url: "https://mirrors.cloud.tencent.com/dart-pub/"
+    source: hosted
+    version: "1.2.1"
   record_linux:
     dependency: transitive
     description:
       name: record_linux
-      sha256: "74d41a9ebb1eb498a38e9a813dd524e8f0b4fdd627270bda9756f437b110a3e3"
+      sha256: "31181787bf7eccb0e298835836b69b3cd0a903863b75d70e937de3dec71cd8f3"
       url: "https://mirrors.cloud.tencent.com/dart-pub/"
     source: hosted
-    version: "0.7.2"
+    version: "1.3.1"
+  record_macos:
+    dependency: transitive
+    description:
+      name: record_macos
+      sha256: cfe1b61435e27db418bf513dc36820d10c9f7eb1843786c2c9a52e07e2f4f627
+      url: "https://mirrors.cloud.tencent.com/dart-pub/"
+    source: hosted
+    version: "1.2.2"
   record_platform_interface:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
       name: record_platform_interface
-      sha256: "3a4b56e94ecd2a0b2b43eb1fa6f94c5b8484334f5d38ef43959c4bf97fb374cf"
+      sha256: "8e56cbe06c6984137fb86132ff03459f29938d927496d9b2d0962e2d6345d488"
       url: "https://mirrors.cloud.tencent.com/dart-pub/"
     source: hosted
-    version: "1.0.2"
+    version: "1.6.0"
   record_web:
     dependency: transitive
     description:

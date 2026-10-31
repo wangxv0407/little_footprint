@@ -272,7 +272,7 @@ class SyncService {
       if (needMet['type'] == 'need_metrics') {
         final uuids = (needMet['uuids'] as List? ?? []).cast<String>();
         for (final uuid in uuids) {
-          final metrics = await db.getMetrics();
+          final metrics = await db.getAllMetrics();
           GrowthMetric? m;
           for (final x in metrics) {
             if (x.uuid == uuid) {

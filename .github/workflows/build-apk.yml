@@ -20,7 +20,9 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.x'
+          # 与本地开发环境保持一致（3.29.3 / Dart 3.7.2），
+          # 依赖已用区间约束兼容更高版本，后续可平滑升级。
+          flutter-version: '3.29.3'
           channel: stable
           cache: true
 

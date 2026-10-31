@@ -8,7 +8,7 @@ import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 预初始化数据库
+  // 预初始化数据库（含 v1 → v2 迁移）
   await AppDatabase.instance.database;
   runApp(const LittleFootprintApp());
 }
@@ -21,7 +21,7 @@ class LittleFootprintApp extends StatefulWidget {
 }
 
 class _LittleFootprintAppState extends State<LittleFootprintApp> {
-  bool _hasConfig = false;
+  bool? _hasBaby;
 
   @override
   void initState() {
@@ -30,10 +30,9 @@ class _LittleFootprintAppState extends State<LittleFootprintApp> {
   }
 
   Future<void> _loadConfig() async {
-    final info = await AppDatabase.instance.getBabyInfo();
-    if (mounted) {
-      setState(() => _hasConfig = info != null);
-    }
+    final baby = await AppDatabase.instance.getActiveBaby();
+    if (!mounted) return;
+    setState(() => _hasBaby = baby != null);
   }
 
   @override
@@ -42,7 +41,6 @@ class _LittleFootprintAppState extends State<LittleFootprintApp> {
       title: '小脚印成长记',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      // 中文本地化：让 showDatePicker / showAboutDialog 等系统组件显示中文
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -50,7 +48,14 @@ class _LittleFootprintAppState extends State<LittleFootprintApp> {
       ],
       supportedLocales: const [Locale('zh'), Locale('en')],
       locale: const Locale('zh'),
-      home: _hasConfig ? const HomeShell() : const SplashPage(),
+      home: switch (_hasBaby) {
+        null => const Scaffold(
+            backgroundColor: AppColors.paper,
+            body: Center(child: CircularProgressIndicator(color: AppColors.clay)),
+          ),
+        true => const HomeShell(),
+        false => SplashPage(onReady: _loadConfig),
+      },
     );
   }
 }

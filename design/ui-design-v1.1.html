@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小脚印成长记 · UI 设计稿 v1.1</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+--paper:#FBF8F3;--card:#fff;--line:#EDE5D8;--line2:#E1D7C5;
+--ink:#2B2724;--ink2:#7C7369;--ink3:#B3A99D;
+--clay:#BF5B3B;--clayl:#F7E8E1;--clayd:#9C4526;
+--pine:#2E5245;--pinel:#E4EDE7;
+--gold:#D9A34E;--goldl:#FAF0DD;
+--r8:8px;--r12:12px;--r16:16px;--r22:22px;
+--serif:"Noto Serif SC","Songti SC","STSong","SimSun",serif;
+--sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+--sh:0 2px 6px rgba(43,39,36,.05),0 12px 32px rgba(43,39,36,.06);
+}
+body{background:#EDE7DC;font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;padding:48px 32px 80px}
+.wrap{max-width:1260px;margin:0 auto}
+.head{margin-bottom:44px}
+.eyebrow{font-size:12px;letter-spacing:.18em;color:var(--clay);font-weight:600;text-transform:uppercase}
+h1{font-family:var(--serif);font-size:38px;font-weight:600;letter-spacing:.02em;margin:10px 0 12px;line-height:1.25}
+.lede{font-size:14px;color:var(--ink2);line-height:1.85;max-width:680px}
+.tokens{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:36px 0 56px}
+.tcard{background:#fff;border:1px solid var(--line);border-radius:var(--r16);padding:18px;box-shadow:var(--sh)}
+.tcard h3{font-size:11px;letter-spacing:.14em;color:var(--ink3);font-weight:600;margin-bottom:14px}
+.sw{display:flex;gap:8px;margin-bottom:6px}
+.sw i{width:34px;height:34px;border-radius:9px;display:block;border:1px solid rgba(0,0,0,.05)}
+.swl{font-size:10px;color:var(--ink3);font-family:ui-monospace,monospace;line-height:1.7}
+.trow{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px dashed var(--line)}
+.trow:last-child{border:0}
+.trow span:first-child{font-family:var(--serif);color:var(--ink)}
+.trow span:last-child{font-size:10px;color:var(--ink3);font-family:ui-monospace,monospace}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,375px);gap:56px 44px;justify-content:start}
+figure{width:375px}
+figcaption{font-size:12px;color:var(--ink2);margin-bottom:14px;display:flex;gap:8px;align-items:baseline}
+figcaption b{font-size:13px;color:var(--ink);font-weight:600}
+figcaption em{font-style:normal;font-size:10px;color:var(--ink3);font-family:ui-monospace,monospace;border:1px solid var(--line2);border-radius:5px;padding:1px 5px}
+.phone{width:375px;height:812px;background:var(--paper);border-radius:36px;overflow:hidden;position:relative;box-shadow:var(--sh);border:1px solid rgba(0,0,0,.07);display:flex;flex-direction:column}
+.sb{height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;letter-spacing:.02em}
+.sbic{display:flex;gap:5px;align-items:center;opacity:.85}
+.ic{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.ic16{width:16px;height:16px}
+.ic18{width:18px;height:18px}
+.ic24{width:24px;height:24px}
+.body{flex:1;overflow:hidden;position:relative}
+.nav{flex:0 0 64px;background:rgba(251,248,243,.94);border-top:1px solid rgba(43,39,36,.055);display:flex}
+.nav div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10.5px;letter-spacing:.04em;color:#A69C8F;position:relative}
+.nav div .ic{width:22px;height:22px;position:relative;z-index:1}
+.nav div::before{content:"";position:absolute;top:10px;left:50%;transform:translateX(-50%);width:38px;height:25px;border-radius:9px;background:transparent}
+.nav div.on::before{background:var(--clayl)}
+.nav div.on{color:var(--clay);font-weight:600}
+.nav div.on .ic{stroke-width:1.85}
+.pad{padding:0 20px}
+.hd{display:flex;align-items:flex-start;justify-content:space-between;padding:6px 20px 14px}
+.date{font-size:11px;color:var(--ink3);letter-spacing:.1em;margin-bottom:5px}
+.bname{font-family:var(--serif);font-size:21px;font-weight:600;display:flex;align-items:center;gap:5px;letter-spacing:.02em}
+.bname small{font-family:var(--sans);font-size:12px;color:var(--ink2);font-weight:400;margin-left:2px}
+.card{background:#fff;border-radius:var(--r16);border:1px solid var(--line);overflow:hidden}
+.chips{display:flex;gap:8px;padding:0 20px 14px;overflow:hidden}
+.chip{font-size:12px;padding:6px 14px;border-radius:999px;border:1px solid var(--line2);color:var(--ink2);white-space:nowrap;background:#fff}
+.chip.on{background:var(--clay);border-color:var(--clay);color:#fff;font-weight:600}
+.chip.ghost{background:transparent;border-color:transparent;color:var(--ink3)}
+.dgroup{display:flex;align-items:center;gap:8px;padding:4px 20px 10px}
+.dgroup span{font-family:var(--serif);font-size:13px;color:var(--ink2);letter-spacing:.06em}
+.dgroup i{flex:1;height:1px;background:var(--line)}
+.tl{padding-left:20px;position:relative}
+.entry{position:relative;padding-left:22px;margin-bottom:12px}
+.entry::before{content:"";position:absolute;left:6px;top:0;bottom:-12px;width:1px;background:var(--line)}
+.entry:last-child::before{display:none}
+.entry::after{content:"";position:absolute;left:3.5px;top:19px;width:6px;height:6px;border-radius:50%;background:var(--line2);border:1.5px solid var(--paper)}
+.entry.ms::after{background:var(--pine);width:7px;height:7px;left:3px}
+.ecard{margin-right:20px;background:#fff;border-radius:var(--r16);border:1px solid var(--line);padding:13px 14px}
+.ecard.ms{border-left:2.5px solid var(--pine)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:999px;letter-spacing:.02em}
+.badge.pine{background:var(--pinel);color:var(--pine)}
+.badge.clay{background:var(--clayl);color:var(--clayd)}
+.meta{font-size:10.5px;color:var(--ink3);margin:7px 0 6px;letter-spacing:.02em}
+.txt{font-size:13px;line-height:1.72;color:var(--ink)}
+.ph{border-radius:var(--r12);position:relative;overflow:hidden;background:#EFE3D4}
+.ph::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 25% 15%,rgba(255,255,255,.55),transparent 60%)}
+.a{background:linear-gradient(145deg,#E8CFB6,#D9B294 55%,#C79A82)}
+.b{background:linear-gradient(150deg,#CBDDD2,#A9C4B6 60%,#8FB0A1)}
+.c{background:linear-gradient(140deg,#F0D9C0,#E0BFA2 58%,#CB9E85)}
+.d{background:linear-gradient(155deg,#E9DCE6,#D3BFD0 60%,#B9A2B5)}
+.e{background:linear-gradient(145deg,#F3E2C6,#E4C79B 58%,#D2AE7C)}
+.pgrid{display:grid;gap:6px;margin-top:9px}
+.pgrid.two{grid-template-columns:1fr 1fr}
+.pgrid .ph{aspect-ratio:1;border-radius:10px}
+.fab{position:absolute;right:20px;bottom:22px;width:54px;height:54px;border-radius:50%;background:var(--clay);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(191,91,59,.34)}
+.bar{position:absolute;left:0;right:0;bottom:0;background:rgba(251,248,243,.94);border-top:1px solid var(--line);padding:10px 20px 16px;display:flex;gap:10px}
+.btn{flex:1;height:46px;border-radius:var(--r12);display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:600;letter-spacing:.02em}
+.btn.pri{background:var(--clay);color:#fff;box-shadow:0 4px 14px rgba(191,91,59,.26)}
+.btn.sec{background:#fff;border:1px solid var(--line2);color:var(--ink)}
+.btn.dis{background:#EDE5D8;color:var(--ink3)}
+.sec-title{font-size:11px;letter-spacing:.14em;color:var(--ink3);font-weight:600;padding:22px 20px 10px}
+.lrow{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line)}
+.lrow:last-child{border:0}
+.lrow .tx{flex:1}
+.lrow .t1{font-size:14px;color:var(--ink);letter-spacing:.01em}
+.lrow .t2{font-size:11px;color:var(--ink3);margin-top:3px}
+.sw-t{width:42px;height:25px;border-radius:999px;background:var(--clay);position:relative;flex:0 0 auto}
+.sw-t::after{content:"";position:absolute;right:2.5px;top:2.5px;width:20px;height:20px;border-radius:50%;background:#fff}
+.sw-t.off{background:#DED4C6}
+.sw-t.off::after{left:2.5px;right:auto}
+.ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.ico.clay{background:var(--clayl);color:var(--clay)}
+.ico.pine{background:var(--pinel);color:var(--pine)}
+.ico.gold{background:var(--goldl);color:#B5842F}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:4px 20px 12px;font-size:14px}
+.topbar b{font-weight:600;font-size:15px;letter-spacing:.01em}
+.topbar a{color:var(--ink2);font-size:13px}
+.topbar a.pri{color:var(--clay);font-weight:600}
+input.f,textarea.f{width:100%;border:1px solid var(--line2);background:#fff;border-radius:var(--r12);font-family:var(--sans);font-size:14px;color:var(--ink);padding:12px 14px;outline:none}
+input.f::placeholder,textarea.f::placeholder{color:var(--ink3)}
+textarea.f{resize:none;line-height:1.7}
+.flabel{font-size:11px;letter-spacing:.12em;color:var(--ink3);font-weight:600;margin:20px 0 8px}
+.tagline{display:flex;gap:6px;flex-wrap:wrap}
+.tg{font-size:11.5px;padding:5px 11px;border-radius:999px;background:#fff;border:1px solid var(--line2);color:var(--ink2)}
+.tg.on{background:var(--clayl);border-color:#E9C9BA;color:var(--clayd);font-weight:600}
+.addbox{border:1.4px dashed var(--line2);border-radius:var(--r12);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--ink3);font-size:10.5px;aspect-ratio:1;background:rgba(255,255,255,.6)}
+.seg{display:flex;background:#EFE7DA;border-radius:11px;padding:3px;margin:0 20px 16px}
+.seg div{flex:1;text-align:center;font-size:12.5px;padding:7px 0;border-radius:9px;color:var(--ink2)}
+.seg div.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(43,39,36,.08)}
+.stat{display:flex;gap:10px;padding:0 20px 16px}
+.stat div{flex:1;background:#fff;border:1px solid var(--line);border-radius:var(--r12);padding:11px 12px}
+.stat b{display:block;font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:.01em}
+.stat s{display:block;text-decoration:none;font-size:10px;color:var(--ink3);margin-top:3px;letter-spacing:.06em}
+.msrow{display:flex;align-items:center;gap:11px;padding:11px 20px;border-bottom:1px solid var(--line);background:#fff}
+.dot{width:20px;height:20px;border-radius:50%;border:1.6px solid var(--line2);flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff}
+.dot.ok{background:var(--pine);border-color:var(--pine)}
+.msrow .n{flex:1}
+.msrow .n b{font-size:13.5px;font-weight:500;display:block;letter-spacing:.01em}
+.msrow .n s{text-decoration:none;font-size:10.5px;color:var(--ink3);display:block;margin-top:2px}
+.msrow.done .n b{color:var(--ink2)}
+.msrow .rm{font-size:10px;color:var(--ink3);border:1px solid var(--line2);border-radius:6px;padding:2px 6px;font-family:ui-monospace,monospace}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:0 52px}
+.keypad div{height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:23px;font-family:var(--serif);color:var(--ink);background:rgba(255,255,255,.7);border:1px solid var(--line)}
+.pindots{display:flex;gap:14px;justify-content:center;margin:26px 0 34px}
+.pindots i{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--line2);display:block}
+.pindots i.f{background:var(--clay);border-color:var(--clay)}
+.bigpic{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 36px;background:radial-gradient(circle at 50% 34%,#F6EDE0,#FBF8F3 62%)}
+.note{font-size:11px;color:var(--ink3);line-height:1.8;text-align:center}
+.longpic{width:250px;background:#fff;border-radius:14px;box-shadow:0 12px 34px rgba(43,39,36,.18);padding:20px 18px;margin:0 auto}
+.srch{display:flex;align-items:center;gap:10px;padding:0 20px 16px}
+.srch .box{flex:1;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line2);border-radius:12px;padding:10px 13px;font-size:13px;color:var(--ink)}
+mark{background:#FBE3D5;color:var(--clayd);padding:0 1px;border-radius:2px}
+.ipbox{background:#fff;border:1px solid var(--line);border-radius:var(--r16);padding:16px;margin:0 20px 14px}
+.ipbox .lbl{font-size:11px;letter-spacing:.1em;color:var(--ink3);margin-bottom:8px}
+.mono{font-family:ui-monospace,monospace;font-size:15px;letter-spacing:.06em;color:var(--ink)}
+.curve{position:relative;padding:0 4px}
+.spec{margin-top:64px}
+.shead{margin-bottom:26px}
+.shead h2{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:.02em;margin:9px 0 9px}
+.shead p{font-size:12.5px;color:var(--ink2);line-height:1.85;max-width:600px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:18px}
+.scard{background:#fff;border:1px solid var(--line);border-radius:var(--r16);padding:4px 20px 6px;box-shadow:var(--sh)}
+.scap{font-size:10px;letter-spacing:.16em;color:var(--ink3);font-weight:600;padding:15px 0 3px}
+.srow{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px dashed var(--line)}
+.srow:last-child{border-bottom:0}
+.chipv{width:38px;height:38px;border-radius:11px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.07);font-family:var(--serif);font-size:15px;color:var(--ink);overflow:hidden}
+.sinfo{flex:1;min-width:0}
+.snm{font-size:13px;color:var(--ink);letter-spacing:.01em}
+.simpl{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--ink3);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sval{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--ink2);flex:0 0 auto;text-align:right;letter-spacing:.02em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <div class="eyebrow">Little Footprint · UI System v1.1</div>
+  <h1>小脚印成长记 · 界面设计稿</h1>
+  <p class="lede">设计语言取「手帐与纸」的质感：暖米白纸底、陶土红作行动色、松绿仅用于里程碑与完成态。衬线体只出现在宝宝名、日期与数字上，制造仪式感；正文全部无衬线，保证长辈也能读清。共 14 屏，逐屏对应 PRD 的 FR 编号。</p>
+</div>
+
+<div class="tokens">
+  <div class="tcard">
+    <h3>色彩 COLORS</h3>
+    <div class="sw">
+      <i style="background:#BF5B3B"></i><i style="background:#2E5245"></i><i style="background:#D9A34E"></i><i style="background:#FBF8F3"></i><i style="background:#2B2724"></i>
+    </div>
+    <div class="swl">Clay #BF5B3B · Pine #2E5245<br>Gold #D9A34E · Paper #FBF8F3<br>Ink #2B2724 · Line #EDE5D8</div>
+  </div>
+  <div class="tcard">
+    <h3>字阶 TYPE SCALE</h3>
+    <div class="trow"><span style="font-size:21px">小满 1岁2月</span><span>21/600 serif</span></div>
+    <div class="trow"><span style="font-size:15px">今天学会用勺子</span><span>15/500 sans</span></div>
+    <div class="trow"><span style="font-size:13px">正文阅读层级</span><span>13/400 sans</span></div>
+    <div class="trow"><span style="font-size:10.5px;color:#B3A99D">辅助信息 / 时间</span><span>10.5/400</span></div>
+  </div>
+  <div class="tcard">
+    <h3>间距与圆角</h3>
+    <div class="trow"><span>4 基数</span><span>4 8 12 16 20 32</span></div>
+    <div class="trow"><span>圆角</span><span>8 / 12 / 16 / 22 / ∞</span></div>
+    <div class="trow"><span>卡片内距</span><span>13~16px</span></div>
+    <div class="trow"><span>页边距</span><span>20px</span></div>
+  </div>
+</div>
+
+<div class="grid">
+
+<figure>
+  <figcaption><b>01 首次建档</b><em>FR-102</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="bigpic" style="padding-top:0">
+        <svg width="150" height="150" viewBox="0 0 150 150" fill="none">
+          <circle cx="75" cy="72" r="46" stroke="#E1D7C5" stroke-width="1.2"/>
+          <circle cx="75" cy="72" r="30" fill="#F7E8E1"/>
+          <path d="M52 96c4-11 12-16 23-16s19 5 23 16" stroke="#BF5B3B" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="67" cy="68" r="2.6" fill="#BF5B3B"/><circle cx="83" cy="68" r="2.6" fill="#BF5B3B"/>
+          <path d="M69 78c3.6 3 8.4 3 12 0" stroke="#BF5B3B" stroke-width="2" stroke-linecap="round"/>
+          <path d="M30 128h14M106 128h14" stroke="#E1D7C5" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <div style="font-family:var(--serif);font-size:25px;font-weight:600;line-height:1.4;margin:26px 0 10px;letter-spacing:.02em">记住每一个<br>小小的第一次</div>
+        <div style="font-size:12.5px;color:var(--ink2);line-height:1.9">照片、声音、身高体重，<br>全部留在这台手机里。</div>
+      </div>
+      <div class="pad" style="margin-top:26px">
+        <div class="flabel">宝宝小名</div>
+        <input class="f" placeholder="例如：小满" value="小满">
+        <div class="flabel">出生日期</div>
+        <input class="f" placeholder="2025-08-20" value="2025 年 8 月 20 日">
+        <div class="flabel">我是</div>
+        <div style="display:flex;gap:10px">
+          <div class="btn sec" style="height:44px">妈妈</div>
+          <div class="btn pri" style="height:44px">爸爸</div>
+        </div>
+      </div>
+    </div>
+    <div class="bar">
+      <div class="btn pri">开始记录</div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>02 时间轴</b><em>FR-201 / 407 / 502</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="hd">
+        <div>
+          <div class="date">2026 年 10 月 31 日 · 星期六</div>
+          <div class="bname">小满 <small>1 岁 2 月</small> <svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M6 9l6 6 6-6"/></svg></div>
+        </div>
+        <svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--ink2);margin-top:8px"><circle cx="11" cy="11" r="7"/><path d="M16.6 16.6L21 21"/></svg>
+      </div>
+      <div class="pad" style="margin-bottom:14px">
+        <div class="card" style="padding:10px 12px;display:flex;gap:11px;align-items:center">
+          <div class="ph c" style="width:44px;height:44px;border-radius:10px;flex:0 0 auto"></div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--clay);font-weight:600;letter-spacing:.1em">去年的今天</div>
+            <div style="font-size:12.5px;margin-top:3px">第一次吃辅食，糊了满脸</div>
+          </div>
+          <svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip on">全部</span><span class="chip">照片</span><span class="chip">里程碑</span><span class="chip">收藏</span>
+      </div>
+      <div class="dgroup"><span>今天</span><i></i></div>
+      <div class="tl">
+        <div class="entry ms">
+          <div class="ecard ms">
+            <span class="badge pine"><svg class="ic" style="width:11px;height:11px" viewBox="0 0 24 24"><path d="M12 2l3 6.5 7 1-5 5 1.2 7L12 18l-6.2 3.5L7 14.5l-5-5 7-1z"/></svg>第一次独立行走</span>
+            <div class="meta">09:20 · 1 岁 2 月 11 天 · 妈妈</div>
+            <div class="txt">从沙发走到茶几，走了七步，最后一步是扑进我怀里的。</div>
+            <div class="pgrid two"><div class="ph a"></div><div class="ph e"></div></div>
+          </div>
+        </div>
+        <div class="entry">
+          <div class="ecard">
+            <div class="meta" style="margin-top:0">14:05 · 妈妈</div>
+            <div class="txt">今天学会用勺子，虽然一半都糊在了脸上。吃完还自己拍了拍手。</div>
+            <div class="pgrid"><div class="ph d" style="aspect-ratio:2/1"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="dgroup"><span>昨天</span><i></i></div>
+      <div class="tl">
+        <div class="entry">
+          <div class="ecard">
+            <div class="meta" style="margin-top:0">20:12 · 爸爸</div>
+            <div class="txt">睡前念《月亮晚安》，念到第三遍就睡着了。</div>
+          </div>
+        </div>
+      </div>
+      <div class="fab"><svg class="ic ic24" viewBox="0 0 24 24" style="stroke-width:2"><path d="M12 5v14M5 12h14"/></svg></div>
+    </div>
+    <div class="nav">
+      <div class="on"><svg class="ic ic24" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h9"/></svg>时间轴</div>
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.9L7 22l5-3 5 3-1.2-8.1"/></svg>里程碑</div>
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-5 4 4 6-7"/></svg>档案</div>
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>我的</div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>03 里程碑</b><em>FR-301 / 303</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="hd" style="padding-bottom:10px">
+        <div>
+          <div class="date">MILESTONES</div>
+          <div class="bname">里程碑</div>
+        </div>
+      </div>
+      <div class="pad" style="margin-bottom:16px">
+        <div class="card" style="padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end">
+            <div>
+              <div style="font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:.02em">12 <span style="font-size:13px;color:var(--ink3);font-family:var(--sans)">/ 42 已达成</span></div>
+              <div style="font-size:11px;color:var(--ink3);margin-top:5px">比同龄孩子平均早 3 周</div>
+            </div>
+            <svg width="46" height="46" viewBox="0 0 46 46">
+              <circle cx="23" cy="23" r="19" stroke="#EDE5D8" stroke-width="4" fill="none"/>
+              <circle cx="23" cy="23" r="19" stroke="#2E5245" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="119 119" stroke-dashoffset="85" transform="rotate(-90 23 23)"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="dgroup" style="padding-bottom:6px"><span>大运动</span><i></i></div>
+      <div class="msrow done"><span class="dot ok"><svg class="ic" style="width:11px;height:11px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span class="n"><b>第一次翻身</b><s>2026-01-08 · 4 月 19 天</s></span><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg></div>
+      <div class="msrow done"><span class="dot ok"><svg class="ic" style="width:11px;height:11px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span class="n"><b>独立坐稳</b><s>2026-03-14 · 6 月 22 天</s></span><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg></div>
+      <div class="msrow done" style="border-left:2.5px solid var(--pine)"><span class="dot ok"><svg class="ic" style="width:11px;height:11px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span class="n"><b>独立行走</b><s>2026-10-31 · 1 岁 2 月 11 天</s></span><span class="badge pine" style="font-size:9.5px">NEW</span></div>
+      <div class="msrow"><span class="dot"></span><span class="n"><b style="color:var(--ink2)">双脚跳</b><s>建议 20–30 月</s></span><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg></div>
+      <div class="dgroup" style="padding-top:18px;padding-bottom:6px"><span>语言</span><i></i></div>
+      <div class="msrow done"><span class="dot ok"><svg class="ic" style="width:11px;height:11px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span class="n"><b>有意识叫妈妈</b><s>2026-09-02 · 12 月 12 天</s></span><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg></div>
+      <div class="msrow"><span class="dot"></span><span class="n"><b style="color:var(--ink2)">说三个字的短句</b><s>建议 14–24 月</s></span><span class="badge clay" style="font-size:9.5px">本月可关注</span></div>
+    </div>
+    <div class="nav">
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h9"/></svg>时间轴</div>
+      <div class="on"><svg class="ic ic24" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.9L7 22l5-3 5 3-1.2-8.1"/></svg>里程碑</div>
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-5 4 4 6-7"/></svg>档案</div>
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>我的</div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>04 成长档案</b><em>FR-201 / 703</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="hd" style="padding-bottom:8px">
+        <div><div class="date">GROWTH</div><div class="bname">成长档案</div></div>
+        <svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--ink2);margin-top:8px"><path d="M12 5v14M5 12h14"/></svg>
+      </div>
+      <div class="seg"><div class="on">身高</div><div>体重</div><div>头围</div></div>
+      <div class="pad" style="margin-bottom:14px">
+        <div class="card" style="padding:18px 14px 8px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 12px">
+            <div><span style="font-family:var(--serif);font-size:28px;font-weight:600">78.4</span><span style="font-size:12px;color:var(--ink3);margin-left:4px">cm</span></div>
+            <div style="font-size:10.5px;color:var(--pine);background:var(--pinel);padding:3px 9px;border-radius:999px;font-weight:600">近 3 月 +3.2</div>
+          </div>
+          <svg viewBox="0 0 300 150" width="100%" height="150">
+            <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#BF5B3B" stop-opacity=".16"/><stop offset="1" stop-color="#BF5B3B" stop-opacity="0"/></linearGradient></defs>
+            <g stroke="#EDE5D8" stroke-width="1"><path d="M0 30h292M0 62h292M0 94h292M0 126h292"/></g>
+            <path d="M14 118C40 108 52 96 78 86s48-14 74-24 52-14 78-24" fill="none" stroke="#BF5B3B" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M14 118C40 108 52 96 78 86s48-14 74-24 52-14 78-24V150H14Z" fill="url(#g1)"/>
+            <g fill="#fff" stroke="#BF5B3B" stroke-width="2"><circle cx="14" cy="118" r="3.4"/><circle cx="78" cy="86" r="3.4"/><circle cx="152" cy="62" r="3.4"/><circle cx="230" cy="38" r="4.2"/></g>
+            <g font-size="9" fill="#B3A99D" font-family="sans-serif"><text x="6" y="146">2月</text><text x="70" y="146">5月</text><text x="144" y="146">8月</text><text x="222" y="146">10月</text></g>
+          </svg>
+        </div>
+      </div>
+      <div class="stat">
+        <div><b>14</b><s>测量次数</s></div>
+        <div><b>78.4</b><s>最新身高 cm</s></div>
+        <div><b>10.2</b><s>最新体重 kg</s></div>
+      </div>
+      <div class="sec-title" style="padding-top:8px">历史测量</div>
+      <div style="background:#fff;border-top:1px solid var(--line)">
+        <div class="lrow"><div class="tx"><div class="t1">2026-10-28</div><div class="t2">1 岁 2 月 8 天</div></div><div style="font-size:12px;color:var(--ink2)">78.4 / 10.2 / 46.1</div></div>
+        <div class="lrow"><div class="tx"><div class="t1">2026-08-20</div><div class="t2">1 岁生日</div></div><div style="font-size:12px;color:var(--ink2)">76.1 / 9.8 / 45.8</div></div>
+        <div class="lrow"><div class="tx"><div class="t1">2026-06-14</div><div class="t2">9 月 25 天</div></div><div style="font-size:12px;color:var(--ink2)">73.2 / 9.1 / 45.0</div></div>
+      </div>
+    </div>
+    <div class="nav">
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h9"/></svg>时间轴</div>
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.9L7 22l5-3 5 3-1.2-8.1"/></svg>里程碑</div>
+      <div class="on"><svg class="ic ic24" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-5 4 4 6-7"/></svg>档案</div>
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>我的</div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>05 我的</b><em>FR-201 / 701 / 702</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="hd" style="padding-bottom:16px"><div><div class="date">PROFILE</div><div class="bname">我的</div></div></div>
+      <div class="pad" style="margin-bottom:20px">
+        <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#FFFDFA,#F8F1E7)">
+          <div class="ph b" style="width:54px;height:54px;border-radius:16px;flex:0 0 auto"></div>
+          <div style="flex:1">
+            <div style="font-family:var(--serif);font-size:18px;font-weight:600">小满</div>
+            <div style="font-size:11px;color:var(--ink3);margin-top:4px">出生第 438 天 · 2025-08-20</div>
+          </div>
+          <svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      </div>
+      <div class="sec-title" style="padding-top:0">记录</div>
+      <div class="card" style="margin:0 20px 18px">
+        <div class="lrow" style="padding:13px 14px"><div class="ico pine"><svg class="ic ic18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></div><div class="tx"><div class="t1">宝宝管理</div><div class="t2">2 个宝宝</div></div><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg></div>
+        <div class="lrow" style="padding:13px 14px"><div class="ico gold"><svg class="ic ic18" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div><div class="tx"><div class="t1">提醒设置</div><div class="t2">疫苗 · 体检 · 生日</div></div><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+      <div class="sec-title" style="padding-top:0">数据</div>
+      <div class="card" style="margin:0 20px 18px">
+        <div class="lrow" style="padding:13px 14px"><div class="ico clay"><svg class="ic ic18" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10"/><path d="M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg></div><div class="tx"><div class="t1">双机同步</div><div class="t2">上次同步 · 3 天前</div></div><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg></div>
+        <div class="lrow" style="padding:13px 14px"><div class="ico clay"><svg class="ic ic18" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg></div><div class="tx"><div class="t1">备份与恢复</div><div class="t2" style="color:#C05A38">距上次备份 34 天，建议现在导出</div></div><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg></div>
+        <div class="lrow" style="padding:13px 14px"><div class="ico pine"><svg class="ic ic18" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></svg></div><div class="tx"><div class="t1">存储占用</div><div class="t2">照片 218 MB · 视频 1.4 GB</div></div><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+      <div class="sec-title" style="padding-top:0">安全</div>
+      <div class="card" style="margin:0 20px">
+        <div class="lrow" style="padding:13px 14px"><div class="ico pine"><svg class="ic ic18" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="tx"><div class="t1">隐私锁</div><div class="t2">已开启 · 面容解锁</div></div><span class="sw-t"></span></div>
+      </div>
+      <div class="note" style="margin-top:24px">小脚印成长记 v1.1.0<br>所有数据只存在你的手机里</div>
+    </div>
+    <div class="nav">
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h9"/></svg>时间轴</div>
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.9L7 22l5-3 5 3-1.2-8.1"/></svg>里程碑</div>
+      <div><svg class="ic ic24" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-5 4 4 6-7"/></svg>档案</div>
+      <div class="on"><svg class="ic ic24" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>我的</div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>06 新增记录 · 日常</b><em>FR-401</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="topbar"><a>取消</a><b>新增记录</b><a class="pri">保存</a></div>
+      <div class="seg" style="margin-top:6px"><div class="on">日常</div><div>里程碑</div></div>
+      <div class="pad">
+        <div class="card" style="padding:13px 14px;display:flex;align-items:center;gap:10px">
+          <svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--clay)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <div style="flex:1;font-size:13.5px">今天 14:05</div>
+          <svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="flabel">此刻发生了什么</div>
+        <textarea class="f" rows="5" placeholder="写下此刻的小事…">今天学会用勺子，虽然一半都糊在了脸上。</textarea>
+        <div class="flabel">标签</div>
+        <div class="tagline">
+          <span class="tg on">辅食</span><span class="tg">翻身</span><span class="tg">疫苗</span><span class="tg">出游</span><span class="tg" style="border-style:dashed">+ 新建</span>
+        </div>
+        <div class="flabel">照片与声音</div>
+        <div class="pgrid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="ph a"></div>
+          <div class="ph e"></div>
+          <div class="addbox"><svg class="ic ic24" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>照片</span></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <div class="btn sec" style="height:42px;font-size:12.5px"><svg class="ic ic16" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg>录音</div>
+          <div class="btn sec" style="height:42px;font-size:12.5px"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>视频</div>
+        </div>
+      </div>
+    </div>
+    <div class="bar" style="padding-bottom:20px"><div class="btn pri">保存这条记录</div></div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>07 新增记录 · 里程碑</b><em>FR-302</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="topbar"><a>取消</a><b>新增记录</b><a class="pri">保存</a></div>
+      <div class="seg" style="margin-top:6px"><div>日常</div><div class="on">里程碑</div></div>
+      <div class="pad">
+        <div class="card" style="padding:14px;border-left:2.5px solid var(--pine)">
+          <div style="font-size:10px;color:var(--ink3);letter-spacing:.1em">已选择</div>
+          <div style="font-family:var(--serif);font-size:17px;font-weight:600;margin-top:5px">独立行走</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:4px">大运动 · 建议 9–17 月</div>
+        </div>
+        <div class="flabel">换一个里程碑</div>
+        <div class="card" style="overflow:hidden">
+          <div style="display:flex;gap:8px;padding:10px;background:#F6F1E8;overflow:hidden">
+            <span class="chip on" style="font-size:11px;padding:5px 11px">大运动</span><span class="chip" style="font-size:11px;padding:5px 11px">精细动作</span><span class="chip" style="font-size:11px;padding:5px 11px">语言</span><span class="chip" style="font-size:11px;padding:5px 11px">社交</span>
+          </div>
+          <div class="msrow done" style="border:0"><span class="dot ok"><svg class="ic" style="width:11px;height:11px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span class="n"><b>独立坐稳</b><s>已达成 · 2026-03-14</s></span></div>
+          <div class="msrow" style="border:0;background:var(--pinel)"><span class="dot" style="border-color:var(--pine);background:var(--pine)"></span><span class="n"><b>独立行走</b><s style="color:var(--pine)">建议 9–17 月 · 选择中</s></span><svg class="ic ic16" viewBox="0 0 24 24" style="color:var(--pine);stroke-width:2.4"><path d="M20 6L9 17l-5-5"/></svg></div>
+          <div class="msrow" style="border:0"><span class="dot"></span><span class="n"><b>扶物站立</b><s>建议 8–13 月</s></span></div>
+          <div class="msrow" style="border:0"><span class="dot"></span><span class="n"><b>双脚跳</b><s>建议 20–30 月</s></span></div>
+        </div>
+        <div class="flabel">发生时间</div>
+        <div class="card" style="padding:13px 14px;display:flex;align-items:center;gap:10px">
+          <svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--clay)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <div style="flex:1;font-size:13.5px">今天 09:20</div>
+          <span style="font-size:11px;color:var(--pine);background:var(--pinel);padding:3px 8px;border-radius:999px">1 岁 2 月 11 天</span>
+        </div>
+      </div>
+    </div>
+    <div class="bar" style="padding-bottom:20px"><div class="btn pri">记录这个瞬间</div></div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>08 记录详情</b><em>FR-401 / 501</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="topbar">
+        <svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--ink2)"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <b>记录详情</b>
+        <svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--ink2)"><circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div class="pad" style="padding-top:8px">
+        <span class="badge pine"><svg class="ic" style="width:11px;height:11px" viewBox="0 0 24 24"><path d="M12 2l3 6.5 7 1-5 5 1.2 7L12 18l-6.2 3.5L7 14.5l-5-5 7-1z"/></svg>第一次独立行走</span>
+        <div style="margin-top:14px;font-family:var(--serif);font-size:14px;color:var(--ink)">2026 年 10 月 31 日 · 09:20</div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:5px">1 岁 2 月 11 天 · 记录人 妈妈</div>
+        <div style="font-size:14.5px;line-height:1.95;margin-top:18px">从沙发走到茶几，走了七步，最后一步是扑进我怀里的。扶着他站稳的那一刻，忽然觉得他长得太快了。</div>
+        <div class="tagline" style="margin-top:14px"><span class="tg on">第一次</span><span class="tg">走路</span></div>
+        <div class="pgrid" style="margin-top:16px;gap:8px"><div class="ph a" style="aspect-ratio:4/3"></div><div class="ph e" style="aspect-ratio:4/3"></div></div>
+        <div class="card" style="margin-top:14px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--clay);color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto"><svg class="ic ic18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5v14l11-7z"/></svg></div>
+          <div style="flex:1">
+            <svg viewBox="0 0 200 26" width="100%" height="26"><g fill="#C9BAA6"><rect x="0" y="9" width="2.5" height="8" rx="1.2"/><rect x="5" y="5" width="2.5" height="16" rx="1.2"/><rect x="10" y="2" width="2.5" height="22" rx="1.2"/><rect x="15" y="7" width="2.5" height="12" rx="1.2"/><rect x="20" y="3" width="2.5" height="20" rx="1.2"/><rect x="25" y="9" width="2.5" height="8" rx="1.2"/><rect x="30" y="5" width="2.5" height="16" rx="1.2"/><rect x="35" y="11" width="2.5" height="4" rx="1.2"/><rect x="40" y="4" width="2.5" height="18" rx="1.2"/><rect x="45" y="7" width="2.5" height="12" rx="1.2"/><rect x="50" y="2" width="2.5" height="22" rx="1.2"/><rect x="55" y="10" width="2.5" height="6" rx="1.2"/><rect x="60" y="5" width="2.5" height="16" rx="1.2"/><rect x="65" y="8" width="2.5" height="10" rx="1.2"/><rect x="70" y="3" width="2.5" height="20" rx="1.2"/><rect x="75" y="9" width="2.5" height="8" rx="1.2"/><rect x="80" y="6" width="2.5" height="14" rx="1.2"/><rect x="85" y="11" width="2.5" height="4" rx="1.2"/><rect x="90" y="4" width="2.5" height="18" rx="1.2"/><rect x="95" y="8" width="2.5" height="10" rx="1.2"/><rect x="100" y="2" width="2.5" height="22" rx="1.2"/><rect x="105" y="10" width="2.5" height="6" rx="1.2"/><rect x="110" y="6" width="2.5" height="14" rx="1.2"/><rect x="115" y="9" width="2.5" height="8" rx="1.2"/><rect x="120" y="4" width="2.5" height="18" rx="1.2"/><rect x="125" y="7" width="2.5" height="12" rx="1.2"/><rect x="130" y="11" width="2.5" height="4" rx="1.2"/><rect x="135" y="5" width="2.5" height="16" rx="1.2"/><rect x="140" y="8" width="2.5" height="10" rx="1.2"/><rect x="145" y="3" width="2.5" height="20" rx="1.2"/><rect x="150" y="10" width="2.5" height="6" rx="1.2"/><rect x="155" y="6" width="2.5" height="14" rx="1.2"/><rect x="160" y="9" width="2.5" height="8" rx="1.2"/><rect x="165" y="4" width="2.5" height="18" rx="1.2"/><rect x="170" y="8" width="2.5" height="10" rx="1.2"/><rect x="175" y="11" width="2.5" height="4" rx="1.2"/><rect x="180" y="5" width="2.5" height="16" rx="1.2"/><rect x="185" y="7" width="2.5" height="12" rx="1.2"/><rect x="190" y="3" width="2.5" height="20" rx="1.2"/><rect x="195" y="9" width="2.5" height="8" rx="1.2"/></g></svg>
+            <div style="font-size:10px;color:var(--ink3);margin-top:3px">00:14 · 第一次叫妈妈</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bar" style="gap:8px;padding-bottom:20px">
+      <div class="btn sec" style="flex:0 0 52px"><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--gold);fill:var(--gold)"><path d="M12 2l3 6.5 7 1-5 5 1.2 7L12 18l-6.2 3.5L7 14.5l-5-5 7-1z"/></svg></div>
+      <div class="btn sec"><svg class="ic ic16" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-4M8.6 13.4l6.8 4"/></svg>生成长图</div>
+      <div class="btn pri">编辑</div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>09 搜索</b><em>FR-402</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="srch">
+        <div class="box"><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><circle cx="11" cy="11" r="7"/><path d="M16.6 16.6L21 21"/></svg><span>疫苗</span><svg class="ic ic16" viewBox="0 0 24 24" style="color:var(--ink3);margin-left:auto"><path d="M18 6L6 18M6 6l12 12"/></svg></div>
+        <span style="font-size:13.5px;color:var(--clay);font-weight:600">取消</span>
+      </div>
+      <div class="chips" style="padding-bottom:16px"><span class="chip on">全部时间</span><span class="chip">今年</span><span class="chip">本月</span><span class="chip">里程碑</span></div>
+      <div style="font-size:11px;color:var(--ink3);padding:0 20px 10px;letter-spacing:.06em">找到 3 条记录</div>
+      <div style="padding-left:20px">
+        <div class="entry"><div class="ecard">
+          <div class="meta" style="margin-top:0">2026-09-12 · 12 月 23 天</div>
+          <div class="txt">今天打<mark>疫苗</mark>，只哭了两声就停了。护士夸他勇敢。</div>
+          <div class="pgrid two"><div class="ph c" style="aspect-ratio:3/2"></div><div class="ph a" style="aspect-ratio:3/2"></div></div>
+        </div></div>
+        <div class="entry"><div class="ecard">
+          <div class="meta" style="margin-top:0">2026-06-05 · 9 月 16 天</div>
+          <div class="txt">六个月<mark>疫苗</mark>，打完有点低烧，晚上物理降温后退了。</div>
+        </div></div>
+        <div class="entry"><div class="ecard">
+          <div class="meta" style="margin-top:0">2026-03-08 · 6 月 16 天</div>
+          <div class="txt">体检加<mark>疫苗</mark>，身高 67.2，医生说长得很好。</div>
+        </div></div>
+      </div>
+      <div class="dgroup" style="padding-top:6px"><span>按标签查找</span><i></i></div>
+      <div class="chips"><span class="chip">疫苗 ×3</span><span class="chip">辅食 ×12</span><span class="chip">出游 ×5</span></div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>10 双机同步</b><em>FR-801 / 802 / 803</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="topbar"><svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--ink2)"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><b>双机同步</b><span style="width:24px"></span></div>
+      <div class="pad" style="padding-top:6px">
+        <div class="card" style="padding:18px 16px;background:linear-gradient(135deg,#FFFDFA,#F7F1E6)">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="text-align:center;flex:1">
+              <div style="width:46px;height:46px;border-radius:14px;background:var(--pinel);display:flex;align-items:center;justify-content:center;margin:0 auto 8px"><svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--pine)"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div>
+              <div style="font-size:12px;font-weight:600">本机</div>
+              <div style="font-size:10px;color:var(--ink3);margin-top:3px">妈妈 · 438 条</div>
+            </div>
+            <svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--clay);margin:0 4px;stroke-width:1.8"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10"/><path d="M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
+            <div style="text-align:center;flex:1">
+              <div style="width:46px;height:46px;border-radius:14px;background:#F2EEE6;display:flex;align-items:center;justify-content:center;margin:0 auto 8px"><svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--ink3)"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div>
+              <div style="font-size:12px;font-weight:600">爸爸手机</div>
+              <div style="font-size:10px;color:var(--ink3);margin-top:3px">等待连接</div>
+            </div>
+          </div>
+        </div>
+        <div class="ipbox" style="margin:14px 0">
+          <div class="lbl">输入对方手机上显示的地址</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="mono" style="flex:1;background:#F6F1E8;border-radius:10px;padding:11px 13px">192.168.1.107</div>
+            <div style="width:44px;height:44px;border-radius:12px;background:var(--pine);color:#fff;display:flex;align-items:center;justify-content:center"><svg class="ic ic18" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+          </div>
+          <div style="font-size:10.5px;color:var(--ink3);margin-top:10px;line-height:1.7">两台设备需连在同一个 Wi-Fi 下。本机地址 192.168.1.42</div>
+        </div>
+      </div>
+      <div class="sec-title" style="padding-top:0">最近同步</div>
+      <div class="card" style="margin:0 20px">
+        <div class="lrow" style="padding:12px 14px"><div class="tx"><div class="t1">新增 8 · 更新 2 · 冲突 0</div><div class="t2">10 月 28 日 21:14 · 192.168.1.107</div></div><span class="badge pine" style="font-size:9.5px">成功</span></div>
+        <div class="lrow" style="padding:12px 14px"><div class="tx"><div class="t1">新增 14 · 更新 1 · 冲突 1</div><div class="t2">10 月 20 日 22:03 · 已按修改时间保留较新版本</div></div><span class="badge pine" style="font-size:9.5px">成功</span></div>
+        <div class="lrow" style="padding:12px 14px"><div class="tx"><div class="t1">连接超时</div><div class="t2">10 月 12 日 20:41 · 检查是否同一 Wi-Fi</div></div><span class="badge clay" style="font-size:9.5px">失败</span></div>
+      </div>
+      <div class="note" style="margin-top:18px">同步只在局域网内进行，<br>不经过任何服务器</div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>11 提醒设置</b><em>FR-601 / 602</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="topbar"><svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--ink2)"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><b>提醒设置</b><span style="width:24px"></span></div>
+      <div class="pad" style="padding-top:4px">
+        <div class="card" style="padding:14px;display:flex;gap:11px;align-items:flex-start;background:var(--goldl);border-color:#EFDFBE">
+          <svg class="ic ic18" viewBox="0 0 24 24" style="color:#B5842F;margin-top:1px"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+          <div style="font-size:11.5px;line-height:1.75;color:#7A5A21">部分手机需要手动允许「自启动」与「通知」，否则提醒可能延迟。点此前往设置。</div>
+        </div>
+      </div>
+      <div class="sec-title" style="padding-top:18px">成长提醒</div>
+      <div class="card" style="margin:0 20px 16px">
+        <div class="lrow" style="padding:13px 14px"><div class="ico clay"><svg class="ic ic18" viewBox="0 0 24 24"><path d="M12 2v6M9 8h6l2 4v8a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-8l2-4z"/><path d="M7 14h10"/></svg></div><div class="tx"><div class="t1">疫苗提醒</div><div class="t2">下次：11 月 20 日 · 水痘疫苗第 1 剂</div></div><span class="sw-t"></span></div>
+        <div class="lrow" style="padding:13px 14px"><div class="ico pine"><svg class="ic ic18" viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div><div class="tx"><div class="t1">体检提醒</div><div class="t2">下次：2027 年 2 月 20 日 · 18 月龄体检</div></div><span class="sw-t"></span></div>
+        <div class="lrow" style="padding:13px 14px"><div class="ico gold"><svg class="ic ic18" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg></div><div class="tx"><div class="t1">生日提醒</div><div class="t2">每年 8 月 20 日 · 上午 9:00</div></div><span class="sw-t"></span></div>
+      </div>
+      <div class="sec-title" style="padding-top:0">数据安全</div>
+      <div class="card" style="margin:0 20px">
+        <div class="lrow" style="padding:13px 14px"><div class="ico clay"><svg class="ic ic18" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg></div><div class="tx"><div class="t1">备份提醒</div><div class="t2">超过 30 天未备份时提醒，每 7 天一次</div></div><span class="sw-t"></span></div>
+      </div>
+      <div style="padding:16px 20px"><div style="height:44px;border-radius:12px;background:#fff;border:1px solid var(--line2);display:flex;align-items:center;justify-content:space-between;padding:0 14px"><span style="font-size:13.5px">提醒时间</span><span style="font-size:13px;color:var(--ink2)">上午 9:00</span></div></div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>12 隐私锁</b><em>FR-701</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body" style="display:flex;flex-direction:column;justify-content:center;background:radial-gradient(circle at 50% 28%,#F7EFE2,#FBF8F3 65%)">
+      <div style="text-align:center;padding-top:10px">
+        <div style="width:58px;height:58px;border-radius:20px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 4px 14px rgba(43,39,36,.06)"><svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--clay)"><rect x="3" y="11" width="18" height="11" rx="2.5"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div style="font-family:var(--serif);font-size:17px;font-weight:600;letter-spacing:.03em">小满的成长记录</div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:6px">输入密码解锁</div>
+      </div>
+      <div class="pindots"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i><i></i></div>
+      <div class="keypad">
+        <div>1</div><div>2</div><div>3</div>
+        <div>4</div><div>5</div><div>6</div>
+        <div>7</div><div>8</div><div>9</div>
+        <div style="font-size:11px;color:var(--ink3);background:transparent;border:0;font-family:var(--sans)">忘记</div>
+        <div>0</div>
+        <div style="background:transparent;border:0"><svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--ink2)"><path d="M20 6L9 17l-5-5"/></svg></div>
+      </div>
+      <div style="text-align:center;margin-top:26px">
+        <span style="font-size:12px;color:var(--ink2);display:inline-flex;align-items:center;gap:6px"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M12 11c-2 0-3.5 1.6-3.5 3.5S10 18 12 18s3.5-1.6 3.5-3.5S14 11 12 11z"/><path d="M12 7v4M8.5 8.5L10 10M15.5 8.5L14 10"/></svg>使用面容解锁</span>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>13 宝宝管理</b><em>FR-102</em></figcaption>
+  <div class="phone">
+    <div class="sb"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body">
+      <div class="topbar"><svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--ink2)"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><b>宝宝管理</b><svg class="ic ic24" viewBox="0 0 24 24" style="color:var(--clay)"><path d="M12 5v14M5 12h14"/></svg></div>
+      <div class="pad" style="padding-top:6px">
+        <div class="card" style="padding:15px;display:flex;align-items:center;gap:14px;border-left:2.5px solid var(--clay)">
+          <div class="ph b" style="width:52px;height:52px;border-radius:16px;flex:0 0 auto"></div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:7px"><span style="font-family:var(--serif);font-size:17px;font-weight:600">小满</span><span class="badge clay" style="font-size:9px">当前</span></div>
+            <div style="font-size:11px;color:var(--ink3);margin-top:5px">2025-08-20 · 1 岁 2 月 · 438 条记录</div>
+          </div>
+          <svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="card" style="padding:15px;display:flex;align-items:center;gap:14px;margin-top:12px">
+          <div class="ph d" style="width:52px;height:52px;border-radius:16px;flex:0 0 auto"></div>
+          <div style="flex:1">
+            <div style="font-family:var(--serif);font-size:17px;font-weight:600">小禾</div>
+            <div style="font-size:11px;color:var(--ink3);margin-top:5px">2026-09-05 · 1 月 26 天 · 36 条记录</div>
+          </div>
+          <svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div style="border:1.4px dashed var(--line2);border-radius:var(--r16);padding:16px;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;color:var(--clay);font-size:13px;font-weight:600;background:rgba(255,255,255,.5)">
+          <svg class="ic ic18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>添加宝宝
+        </div>
+        <div class="note" style="margin-top:22px;text-align:left;padding:0 4px">切换宝宝后，时间轴、里程碑与成长档案会同步切换。<br>最多可添加 6 个宝宝。</div>
+      </div>
+      <div class="sec-title" style="padding-top:20px">本机身份</div>
+      <div class="card" style="margin:0 20px">
+        <div class="lrow" style="padding:13px 14px"><div class="tx"><div class="t1">我是</div><div class="t2">用于标注记录的记录人</div></div><span style="font-size:13px;color:var(--ink2)">妈妈</span><svg class="ic ic18" viewBox="0 0 24 24" style="color:var(--ink3)"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>14 分享长图预览</b><em>FR-501</em></figcaption>
+  <div class="phone" style="background:#3B3631">
+    <div class="sb" style="color:#F3EEE6"><span>9:41</span><span class="sbic"><svg class="ic ic16" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg><svg class="ic ic18" viewBox="0 0 26 14"><rect x="1" y="2" width="20" height="10" rx="3"/><rect x="3" y="4" width="14" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M23.5 5.5v3" stroke-width="2.4"/></svg></span></div>
+    <div class="body" style="display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;padding:6px 22px 16px;color:#D8D0C4;font-size:13.5px"><span>预览</span><svg class="ic ic18" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></div>
+      <div class="longpic" style="width:238px;padding:22px 20px">
+        <div style="text-align:center;padding-bottom:14px;border-bottom:1px solid var(--line)">
+          <div style="font-family:var(--serif);font-size:14px;font-weight:600;letter-spacing:.04em">小满</div>
+          <div style="font-size:9px;color:var(--ink3);margin-top:3px;letter-spacing:.14em">1 岁 2 月 11 天 · 第 438 天</div>
+        </div>
+        <div style="margin-top:14px;display:inline-block;background:var(--pinel);color:var(--pine);font-size:9px;font-weight:600;padding:3px 9px;border-radius:999px">第一次独立行走</div>
+        <div style="font-size:9.5px;color:var(--ink3);margin-top:10px">2026 年 10 月 31 日 · 09:20</div>
+        <div style="font-size:11.5px;line-height:1.9;margin-top:9px;color:var(--ink)">从沙发走到茶几，走了七步，最后一步是扑进我怀里的。</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:12px">
+          <div class="ph a" style="aspect-ratio:1;border-radius:7px"></div>
+          <div class="ph e" style="aspect-ratio:1;border-radius:7px"></div>
+        </div>
+        <div style="margin-top:16px;padding-top:11px;border-top:1px solid var(--line);display:flex;align-items:center;gap:5px;justify-content:center">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#B3A99D" stroke-width="2"><path d="M4 18c3-9 13-9 16 0"/></svg>
+          <span style="font-size:8px;color:var(--ink3);letter-spacing:.16em">小脚印成长记</span>
+        </div>
+      </div>
+    </div>
+    <div style="flex:0 0 auto;padding:16px 20px 28px;display:flex;gap:10px">
+      <div class="btn sec" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#F3EEE6">保存图片</div>
+      <div class="btn pri">分享给家人</div>
+    </div>
+  </div>
+</figure>
+
+</div>
+
+<div class="spec">
+  <div class="shead">
+    <div class="eyebrow">Handoff</div>
+    <h2>Flutter 落地对照</h2>
+    <p>设计 token 直接映射为 Dart 常量，避免实现时二次解释色值。左侧为视觉定义，右侧为布局与可用性约束。</p>
+  </div>
+  <div class="sgrid">
+
+    <div class="scard">
+      <div class="scap">色彩与字体</div>
+      <div class="srow">
+        <div class="chipv" style="background:#FBF8F3"></div>
+        <div class="sinfo"><div class="snm">纸底</div><div class="simpl">Scaffold.backgroundColor</div></div>
+        <div class="sval">#FBF8F3</div>
+      </div>
+      <div class="srow">
+        <div class="chipv" style="background:#BF5B3B;border-color:#BF5B3B"></div>
+        <div class="sinfo"><div class="snm">主行动色</div><div class="simpl">FAB · FilledButton · 选中态</div></div>
+        <div class="sval">#BF5B3B</div>
+      </div>
+      <div class="srow">
+        <div class="chipv" style="background:#2E5245;border-color:#2E5245"></div>
+        <div class="sinfo"><div class="snm">里程碑色</div><div class="simpl">仅里程碑徽标与达成态</div></div>
+        <div class="sval">#2E5245</div>
+      </div>
+      <div class="srow">
+        <div class="chipv" style="background:#fff;border:1px solid #EDE5D8"></div>
+        <div class="sinfo"><div class="snm">卡片描边</div><div class="simpl">Border.all(width: 1)</div></div>
+        <div class="sval">1px #EDE5D8</div>
+      </div>
+      <div class="srow">
+        <div class="chipv">Aa</div>
+        <div class="sinfo"><div class="snm">标题字体</div><div class="simpl">fontFamily: 'Noto Serif SC'</div></div>
+        <div class="sval">21 / w600</div>
+      </div>
+      <div class="srow">
+        <div class="chipv" style="font-family:var(--sans);font-size:14px">Aa</div>
+        <div class="sinfo"><div class="snm">正文字体</div><div class="simpl">height: 1.72（倍数，非 px）</div></div>
+        <div class="sval">13 / w400</div>
+      </div>
+    </div>
+
+    <div class="scard">
+      <div class="scap">布局与可用性</div>
+      <div class="srow">
+        <div class="chipv" style="background:#F6F1E8;border-radius:13px"></div>
+        <div class="sinfo"><div class="snm">卡片圆角</div><div class="simpl">BorderRadius.circular(16)</div></div>
+        <div class="sval">16</div>
+      </div>
+      <div class="srow">
+        <div class="chipv" style="background:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7C7369" stroke-width="1.4"><path d="M4 4v16M20 4v16"/><path d="M9 12h6" stroke-dasharray="2 3"/></svg></div>
+        <div class="sinfo"><div class="snm">页边距</div><div class="simpl">EdgeInsets.symmetric(horizontal: 20)</div></div>
+        <div class="sval">20</div>
+      </div>
+      <div class="srow">
+        <div class="chipv" style="background:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7C7369" stroke-width="1.4"><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/><path d="M3 6h18" stroke-dasharray="2 3"/></svg></div>
+        <div class="sinfo"><div class="snm">底部导航</div><div class="simpl">BottomNavigationBar(height: 66)</div></div>
+        <div class="sval">66</div>
+      </div>
+      <div class="srow">
+        <div class="chipv" style="background:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7C7369" stroke-width="1.4"><rect x="5" y="5" width="14" height="14" rx="3"/><path d="M12 9v6M9 12h6"/></svg></div>
+        <div class="sinfo"><div class="snm">触摸目标</div><div class="simpl">IconButton 加 constraints</div></div>
+        <div class="sval">≥ 44</div>
+      </div>
+      <div class="srow">
+        <div class="chipv" style="background:#E4EDE7;color:#2E5245;font-family:var(--sans);font-size:11px;font-weight:600">AA</div>
+        <div class="sinfo"><div class="snm">正文对比度</div><div class="simpl">≥ WCAG AA 4.5:1</div></div>
+        <div class="sval">12.6:1</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div>
+</body>
+</html>
