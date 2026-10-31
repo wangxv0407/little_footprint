@@ -24,7 +24,7 @@ dependencies:
 
   # 媒体
   image_picker: ^1.1.2
-  record: ^5.1.2
+  record: ^7.1.2
   audioplayers: ^6.1.0
   video_player: ^2.9.1
   chewie: ^1.8.1
@@ -43,14 +43,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-
-# record 5.2.1 强制 record_platform_interface 1.6.0，而 record_linux 只实现到 1.0.2，
-# 两者无兼容组合。降到 record 5.0.0 系列并锁定配套版本，
-# 使 record_linux / record_android 等子包全部自洽，修复 Android 编译错误。
-dependency_overrides:
-  record: 5.0.0
-  record_platform_interface: 1.0.2
-  record_android: 1.0.0
 
 flutter:
   uses-material-design: true
