@@ -111,17 +111,29 @@ class MediaService {
     );
   }
 
-  /// 复制已存在的录音到 compressed 目录（用于入库）
+  /// 复制录音到 compressed 目录（用于入库）。
+  /// 若源文件已在目标目录内（录音直接写在这里），直接复用，避免产生重复副本。
   Future<(String absolutePath, String relativePath, String md5, int size)>
       storeRecording(String srcPath) async {
     final dir = await compressedDir;
+    final root = await recordsRoot;
+
+    if (p.equals(p.dirname(srcPath), dir.path)) {
+      return (
+        srcPath,
+        p.relative(srcPath, from: root.path),
+        await md5Of(srcPath),
+        await File(srcPath).length(),
+      );
+    }
+
     final ext = p.extension(srcPath).isEmpty ? '.aac' : p.extension(srcPath);
     final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_randSuffix()}$ext';
     final target = File(p.join(dir.path, fileName));
     await target.writeAsBytes(await File(srcPath).readAsBytes());
     return (
       target.path,
-      p.relative(target.path, from: (await recordsRoot).path),
+      p.relative(target.path, from: root.path),
       await md5Of(target.path),
       await target.length(),
     );

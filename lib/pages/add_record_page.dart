@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -17,7 +18,9 @@ import '../models/record_type.dart';
 import '../services/media_service.dart';
 import '../theme.dart';
 import '../utils/age_calculator.dart';
+import '../widgets/audio_recorder_panel.dart';
 import '../widgets/common.dart';
+import 'gallery_picker_page.dart';
 
 /// 新增 / 编辑记录
 class AddRecordPage extends StatefulWidget {
@@ -61,8 +64,13 @@ class _AddRecordPageState extends State<AddRecordPage> {
   final _recorder = AudioRecorder();
   bool _recording = false;
   String? _recordedPath;
+  String? _recordingPath;
   int _recordSeconds = 0;
   Timer? _recordTimer;
+
+  /// 实时音量序列（0..1），驱动录音面板的音浪
+  final _levels = <double>[];
+  StreamSubscription<Amplitude>? _ampSub;
 
   final _pickedImagePaths = <String>[];
   String? _pickedVideoPath;
@@ -86,6 +94,7 @@ class _AddRecordPageState extends State<AddRecordPage> {
   @override
   void dispose() {
     _recordTimer?.cancel();
+    _ampSub?.cancel();
     _contentCtrl.dispose();
     _tagCtrl.dispose();
     _recorder.dispose();
@@ -148,41 +157,88 @@ class _AddRecordPageState extends State<AddRecordPage> {
 
   // ==================== 媒体 ====================
 
-  Future<void> _pickImages() async {
-    // image_picker 走系统选择器（Android 13+ 为 Photo Picker，更早为 ACTION_GET_CONTENT），
-    // 由系统对本次选中的文件授予临时访问权，**不需要**申请相册读取权限。
-    // 之前用 Permission.photos 拦截会误判：Android 14+ 部分授权返回 limited 而非 granted。
+  /// 拍照：走系统相机（Android 11+ 已在 Manifest 声明 IMAGE_CAPTURE 可见性）
+  Future<void> _captureImage() async {
     try {
-      final files = await _picker.pickMultiImage();
-      if (files.isNotEmpty) {
-        setState(() => _pickedImagePaths.addAll(files.map((f) => f.path)));
-      }
+      final f =
+          await _picker.pickImage(source: ImageSource.camera, imageQuality: 90);
+      if (f != null) setState(() => _pickedImagePaths.add(f.path));
     } catch (e) {
-      _snack('打开相册失败：$e');
+      _snack('打不开相机：$e');
     }
   }
 
-  Future<void> _pickVideo() async {
+  Future<void> _captureVideo() async {
     try {
-      final file = await _picker.pickVideo(source: ImageSource.gallery);
-      if (file != null) setState(() => _pickedVideoPath = file.path);
+      final f = await _picker.pickVideo(source: ImageSource.camera);
+      if (f != null) setState(() => _pickedVideoPath = f.path);
     } catch (e) {
-      _snack('打开相册失败：$e');
+      _snack('打不开相机：$e');
     }
   }
 
-  Future<void> _toggleRecording() async {
-    if (_recording) {
-      _recordTimer?.cancel();
-      final path = await _recorder.stop();
-      if (!mounted) return;
-      setState(() {
-        _recording = false;
-        _recordedPath = path;
-      });
-      _snack('录音完成');
+  /// 内置图库选择器。权限被拒时用户可以选择改用系统选择器。
+  Future<void> _pickFromGallery({bool video = false}) async {
+    final r = await Navigator.of(context).push<GalleryPickResult>(
+      MaterialPageRoute(
+        builder: (_) => GalleryPickerPage(
+          videoOnly: video,
+          maxCount: video ? 1 : 9,
+          title: video ? '视频' : '照片',
+        ),
+      ),
+    );
+    if (r == null || !mounted) return;
+
+    if (r.fallbackToSystem) {
+      await _systemPick(video: video);
       return;
     }
+    setState(() {
+      if (video) {
+        _pickedVideoPath = r.paths.first;
+      } else {
+        _pickedImagePaths.addAll(r.paths);
+      }
+    });
+  }
+
+  /// 兜底：系统选择器（无需权限，但外观依赖 ROM，部分机型会落成文件管理器）
+  Future<void> _systemPick({required bool video}) async {
+    try {
+      if (video) {
+        final f = await _picker.pickVideo(source: ImageSource.gallery);
+        if (f != null) setState(() => _pickedVideoPath = f.path);
+      } else {
+        final files = await _picker.pickMultiImage();
+        if (files.isNotEmpty) {
+          setState(() => _pickedImagePaths.addAll(files.map((f) => f.path)));
+        }
+      }
+    } catch (e) {
+      _snack('打开选择器失败：$e');
+    }
+  }
+
+  /// 上传本地音频文件
+  Future<void> _pickAudioFile() async {
+    try {
+      final res = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac'],
+        withData: false,
+      );
+      final path = res?.files.single.path;
+      if (path == null || !mounted) return;
+      setState(() => _recordedPath = path);
+    } catch (e) {
+      _snack('选择音频失败：$e');
+    }
+  }
+
+  // ==================== 录音 ====================
+
+  Future<void> _startRecording() async {
     final status = await Permission.microphone.request();
     if (!status.isGranted && !status.isLimited) {
       final blocked = status.isPermanentlyDenied || status.isRestricted;
@@ -193,18 +249,82 @@ class _AddRecordPageState extends State<AddRecordPage> {
       );
       return;
     }
+
     final dir = await MediaService.instance.compressedDir;
-    final path = p.join(dir.path, 'rec_${DateTime.now().millisecondsSinceEpoch}.aac');
-    await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
+    final path =
+        p.join(dir.path, 'rec_${DateTime.now().millisecondsSinceEpoch}.aac');
+    try {
+      await _recorder.start(
+        const RecordConfig(encoder: AudioEncoder.aacLc),
+        path: path,
+      );
+    } catch (e) {
+      _snack('开始录音失败：$e');
+      return;
+    }
     if (!mounted) return;
+    _recordingPath = path;
+
+    // 实时音量：current 是 dBFS，静音约 -45，满量程 0
+    _ampSub?.cancel();
+    _ampSub = _recorder
+        .onAmplitudeChanged(const Duration(milliseconds: 120))
+        .listen((amp) {
+      if (!mounted) return;
+      final lv = ((amp.current + 45) / 45).clamp(0.0, 1.0);
+      setState(() {
+        _levels.add(lv);
+        if (_levels.length > 80) _levels.removeRange(0, _levels.length - 80);
+      });
+    });
+
     setState(() {
       _recording = true;
       _recordSeconds = 0;
+      _levels.clear();
     });
+
     _recordTimer?.cancel();
     _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() => _recordSeconds++);
+    });
+  }
+
+  Future<void> _stopRecording() async {
+    _recordTimer?.cancel();
+    await _ampSub?.cancel();
+    _ampSub = null;
+    final path = await _recorder.stop();
+    if (!mounted) return;
+    setState(() {
+      _recording = false;
+      _recordedPath = path ?? _recordingPath;
+      _levels.clear();
+    });
+    _recordingPath = null;
+  }
+
+  Future<void> _cancelRecording() async {
+    _recordTimer?.cancel();
+    await _ampSub?.cancel();
+    _ampSub = null;
+    await _recorder.stop();
+    final tmp = _recordingPath;
+    _recordingPath = null;
+    if (tmp != null) {
+      try {
+        final f = File(tmp);
+        if (await f.exists()) await f.delete();
+      } catch (_) {
+        // 临时文件删不掉不影响使用
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _recording = false;
+      _recordSeconds = 0;
+      _levels.clear();
     });
   }
 
@@ -240,7 +360,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
     final media = MediaService.instance;
 
     if (_recordType == RecordType.milestone && !_isEdit) {
-      final achieved = await db.isMilestoneAchieved(widget.babyId, _milestoneCode);
+      final achieved =
+          await db.isMilestoneAchieved(widget.babyId, _milestoneCode);
       if (achieved) {
         final def = _msDefs[_milestoneCode];
         _snack('「${def?.name ?? '该里程碑'}」已经记录过了');
@@ -353,62 +474,89 @@ class _AddRecordPageState extends State<AddRecordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.paper,
-      appBar: AppBar(
+    return PopScope(
+      canPop: !_recording,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _recording) _snack('正在录音，请先停止或取消');
+      },
+      child: Scaffold(
         backgroundColor: AppColors.paper,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        titleSpacing: AppSpace.xs,
-        title: Row(
-          children: [
-            TextButton(
-              onPressed: () => Navigator.maybePop(context),
-              style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
-              child: const Text('取消'),
-            ),
-            const Spacer(),
-            Text(
-              _isEdit ? '编辑记录' : '新增记录',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: _saving ? null : _save,
-              child: const Text('保存'),
-            ),
-          ],
+        appBar: AppBar(
+          backgroundColor: AppColors.paper,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          automaticallyImplyLeading: false,
+          titleSpacing: AppSpace.xs,
+          title: Row(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.maybePop(context),
+                style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
+                child: const Text('取消'),
+              ),
+              const Spacer(),
+              Text(
+                _isEdit ? '编辑记录' : '新增记录',
+                style:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: _saving ? null : _save,
+                child: const Text('保存'),
+              ),
+            ],
+          ),
         ),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.clay))
-          : Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(AppSpace.pageX, 4, AppSpace.pageX, 20),
+        body: _loading
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.clay))
+            : Stack(
+                children: [
+                  Column(
                     children: [
-                      _typeSelector(),
-                      const SizedBox(height: AppSpace.md),
-                      if (_recordType == RecordType.milestone) _milestonePicker(),
-                      _label('发生时间'),
-                      _timeRow(),
-                      _label('此刻发生了什么'),
-                      _contentField(),
-                      _label('标签'),
-                      _tagArea(),
-                      _label('照片与声音'),
-                      _mediaGrid(),
-                      const SizedBox(height: AppSpace.xs),
-                      const Text('图片与录音会同步到另一台手机；视频目前只保存在本机',
-                          style: AppText.caption),
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(
+                              AppSpace.pageX, 4, AppSpace.pageX, 20),
+                          children: [
+                            _typeSelector(),
+                            const SizedBox(height: AppSpace.md),
+                            if (_recordType == RecordType.milestone)
+                              _milestonePicker(),
+                            _label('发生时间'),
+                            _timeRow(),
+                            _label('此刻发生了什么'),
+                            _contentField(),
+                            _label('标签'),
+                            _tagArea(),
+                            _label('照片与声音'),
+                            _mediaGrid(),
+                            const SizedBox(height: AppSpace.xs),
+                            const Text('图片与录音会同步到另一台手机；视频目前只保存在本机',
+                                style: AppText.caption),
+                          ],
+                        ),
+                      ),
+                      _bottomBar(),
                     ],
                   ),
-                ),
-                _bottomBar(),
-              ],
-            ),
+                  // 录音时底部升起紧凑面板，录制期间仍可看到正在写的内容
+                  if (_recording)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: AudioRecorderPanel(
+                        timeText: _recTimeText,
+                        levels: _levels,
+                        onStop: _stopRecording,
+                        onCancel: _cancelRecording,
+                      ),
+                    ),
+                ],
+              ),
+      ),
     );
   }
 
@@ -441,7 +589,12 @@ class _AddRecordPageState extends State<AddRecordPage> {
               color: on ? AppColors.card : Colors.transparent,
               borderRadius: BorderRadius.circular(9),
               boxShadow: on
-                  ? const [BoxShadow(color: Color(0x142B2724), blurRadius: 4, offset: Offset(0, 1))]
+                  ? const [
+                      BoxShadow(
+                          color: Color(0x142B2724),
+                          blurRadius: 4,
+                          offset: Offset(0, 1))
+                    ]
                   : null,
             ),
             child: Text(
@@ -463,7 +616,10 @@ class _AddRecordPageState extends State<AddRecordPage> {
         color: const Color(0xFFEFE7DA),
         borderRadius: BorderRadius.circular(11),
       ),
-      child: Row(children: [item(RecordType.diary, '日常'), item(RecordType.milestone, '里程碑')]),
+      child: Row(children: [
+        item(RecordType.diary, '日常'),
+        item(RecordType.milestone, '里程碑')
+      ]),
     );
   }
 
@@ -509,9 +665,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
 
   Widget _timeRow() {
     final baby = _babyBirthForAge;
-    final ageText = baby == null
-        ? null
-        : AgeCalculator.fullText(baby, _recordTime);
+    final ageText =
+        baby == null ? null : AgeCalculator.fullText(baby, _recordTime);
     return GestureDetector(
       onTap: _pickDate,
       child: Container(
@@ -519,7 +674,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
         decoration: AppDecor.card(radius: AppRadius.md),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_outlined, size: 17, color: AppColors.clay),
+            const Icon(Icons.calendar_today_outlined,
+                size: 17, color: AppColors.clay),
             const SizedBox(width: 10),
             Text(
               DateFormat('yyyy-MM-dd').format(_recordTime),
@@ -580,7 +736,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
               GestureDetector(
                 onTap: () => setState(() => _tags.remove(t)),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                   decoration: BoxDecoration(
                     color: AppColors.clayLight,
                     borderRadius: AppRadius.pill,
@@ -595,7 +752,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
                               color: AppColors.clayDark,
                               fontWeight: FontWeight.w600)),
                       const SizedBox(width: 4),
-                      const Icon(Icons.close, size: 12, color: AppColors.clayDark),
+                      const Icon(Icons.close,
+                          size: 12, color: AppColors.clayDark),
                     ],
                   ),
                 ),
@@ -618,7 +776,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.paper,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: const Text('新建标签', style: TextStyle(fontSize: 16)),
         content: TextField(
           controller: _tagCtrl,
@@ -627,7 +786,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
           onSubmitted: (v) => Navigator.pop(ctx, v),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, _tagCtrl.text),
             child: const Text('添加'),
@@ -662,23 +822,9 @@ class _AddRecordPageState extends State<AddRecordPage> {
     // 新选图片
     for (final path in _pickedImagePaths) {
       items.add(_thumbTile(
-        child: Image.file(File(path), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _broken()),
+        child: Image.file(File(path),
+            fit: BoxFit.cover, errorBuilder: (_, __, ___) => _broken()),
         onRemove: () => setState(() => _pickedImagePaths.remove(path)),
-      ));
-    }
-
-    // 新录音
-    if (_recordedPath != null) {
-      items.add(_thumbTile(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.graphic_eq, color: AppColors.clay, size: 24),
-            const SizedBox(height: 2),
-            Text('已录音', style: AppText.caption.copyWith(color: AppColors.clay)),
-          ],
-        ),
-        onRemove: () => setState(() => _recordedPath = null),
       ));
     }
 
@@ -708,7 +854,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
             children: [
               Icon(Icons.add, color: AppColors.ink3, size: 24),
               SizedBox(height: 4),
-              Text('添加', style: TextStyle(fontSize: 10.5, color: AppColors.ink3)),
+              Text('添加',
+                  style: TextStyle(fontSize: 10.5, color: AppColors.ink3)),
             ],
           ),
         ),
@@ -719,14 +866,80 @@ class _AddRecordPageState extends State<AddRecordPage> {
       builder: (context, c) {
         const gap = 8.0;
         final size = (c.maxWidth - gap * 2) / 3;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final w in items) SizedBox(width: size, height: size, child: w),
+            Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final w in items)
+                  SizedBox(width: size, height: size, child: w),
+              ],
+            ),
+            // 音频单独用横条展示，比塞进方格更容易看出文件名
+            if (_recordedPath != null) ...[
+              const SizedBox(height: gap),
+              _audioTile(c.maxWidth),
+            ],
           ],
         );
       },
+    );
+  }
+
+  Widget _audioTile(double width) {
+    final path = _recordedPath!;
+    return SizedBox(
+      width: width,
+      height: 58,
+      child: Container(
+        decoration: AppDecor.card(radius: AppRadius.md),
+        padding: const EdgeInsets.only(left: 10, right: 4),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: AppColors.clayLight,
+                shape: BoxShape.circle,
+              ),
+              child:
+                  const Icon(Icons.graphic_eq, size: 16, color: AppColors.clay),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    '音频',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    p.basename(path),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.caption,
+                  ),
+                ],
+              ),
+            ),
+            AppIconButton(
+              icon: Icons.close,
+              size: 16,
+              onPressed: () => setState(() => _recordedPath = null),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -752,7 +965,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
             child: Container(
               width: 20,
               height: 20,
-              decoration: const BoxDecoration(color: Color(0x99000000), shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                  color: Color(0x99000000), shape: BoxShape.circle),
               child: const Icon(Icons.close, size: 13, color: Colors.white),
             ),
           ),
@@ -772,48 +986,125 @@ class _AddRecordPageState extends State<AddRecordPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Container(
+              width: 34,
+              height: 4,
+              margin: const EdgeInsets.only(top: 10, bottom: 16),
+              decoration: BoxDecoration(
+                color: AppColors.lineStrong,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Text(
+              '添加媒体',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Row(
+                children: [
+                  _mediaTile('拍照', Icons.photo_camera_outlined,
+                      primary: true,
+                      onTap: () => Navigator.pop(ctx, 'capture')),
+                  const SizedBox(width: 10),
+                  _mediaTile('图库照片', Icons.photo_library_outlined,
+                      primary: true,
+                      onTap: () => Navigator.pop(ctx, 'gallery')),
+                  const SizedBox(width: 10),
+                  _mediaTile('拍摄视频', Icons.videocam_outlined,
+                      onTap: () => Navigator.pop(ctx, 'capture_video')),
+                ],
+              ),
+            ),
             const SizedBox(height: 14),
-            const Text('添加媒体', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: AppColors.clay),
-              title: const Text('照片', style: AppText.itemTitle),
-              subtitle: const Text('可多选', style: AppText.caption),
-              onTap: () => Navigator.pop(ctx, 'photo'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Row(
+                children: [
+                  _mediaTile('图库视频', Icons.video_library_outlined,
+                      onTap: () => Navigator.pop(ctx, 'gallery_video')),
+                  const SizedBox(width: 10),
+                  _mediaTile('录音', Icons.mic_none,
+                      onTap: () => Navigator.pop(ctx, 'record')),
+                  const SizedBox(width: 10),
+                  _mediaTile('上传音频', Icons.graphic_eq,
+                      onTap: () => Navigator.pop(ctx, 'audio_file')),
+                ],
+              ),
             ),
-            ListTile(
-              leading: Icon(_recording ? Icons.stop_circle_outlined : Icons.mic_none,
-                  color: AppColors.clay),
-              title: Text(_recording ? '停止录音' : '录音', style: AppText.itemTitle),
-              subtitle: Text(_recording ? _recTimeText : '最长 10 分钟',
-                  style: AppText.caption),
-              onTap: () => Navigator.pop(ctx, 'audio'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.videocam_outlined, color: AppColors.clay),
-              title: const Text('视频', style: AppText.itemTitle),
-              subtitle: const Text('仅保存在本机', style: AppText.caption),
-              onTap: () => Navigator.pop(ctx, 'video'),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 26),
           ],
         ),
       ),
     );
     switch (pick) {
-      case 'photo':
-        await _pickImages();
-      case 'audio':
-        await _toggleRecording();
-      case 'video':
-        await _pickVideo();
+      case 'capture':
+        await _captureImage();
+      case 'gallery':
+        await _pickFromGallery();
+      case 'capture_video':
+        await _captureVideo();
+      case 'gallery_video':
+        await _pickFromGallery(video: true);
+      case 'record':
+        await _startRecording();
+      case 'audio_file':
+        await _pickAudioFile();
     }
+  }
+
+  Widget _mediaTile(
+    String label,
+    IconData icon, {
+    bool primary = false,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          children: [
+            Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: primary ? AppColors.clayLight : AppColors.card,
+                borderRadius: BorderRadius.circular(19),
+                border: Border.all(
+                  color: primary ? const Color(0xFFF0D9CE) : AppColors.line,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  icon,
+                  size: 23,
+                  color: primary ? AppColors.clay : AppColors.ink2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                color: primary ? AppColors.clay : AppColors.ink2,
+                fontWeight: primary ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _chooseMilestone() async {
     final defs = await AppDatabase.instance.getMilestoneDefs();
-    final achieved = await AppDatabase.instance.getMilestoneStatuses(widget.babyId);
-    final achievedCodes = {for (final s in achieved.where((e) => e.achieved)) s.def.code};
+    final achieved =
+        await AppDatabase.instance.getMilestoneStatuses(widget.babyId);
+    final achievedCodes = {
+      for (final s in achieved.where((e) => e.achieved)) s.def.code
+    };
     if (!mounted) return;
 
     final picked = await showModalBottomSheet<String>(
@@ -846,13 +1137,15 @@ class _AddRecordPageState extends State<AddRecordPage> {
                   ),
                   const SizedBox(height: 12),
                   const Text('选择里程碑',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 10),
                   SizedBox(
                     height: 40,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.pageX),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpace.pageX),
                       itemCount: MilestoneCategory.ordered.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (_, i) {
@@ -916,7 +1209,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
         padding: const EdgeInsets.only(top: AppSpace.lg, bottom: AppSpace.xs),
         child: Text(
           text,
-          style: AppText.caption.copyWith(fontWeight: FontWeight.w600, letterSpacing: 1.2),
+          style: AppText.caption
+              .copyWith(fontWeight: FontWeight.w600, letterSpacing: 1.2),
         ),
       );
 
@@ -924,7 +1218,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(AppSpace.pageX, AppSpace.sm, AppSpace.pageX, AppSpace.sm),
+        padding: const EdgeInsets.fromLTRB(
+            AppSpace.pageX, AppSpace.sm, AppSpace.pageX, AppSpace.sm),
         decoration: const BoxDecoration(
           color: Color(0xF0FBF8F3),
           border: Border(top: BorderSide(color: AppColors.line)),

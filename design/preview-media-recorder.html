@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>小脚印成长记 · 媒体选择与录音改版设计</title>
+<style>
+  :root{
+    --paper:#FBF8F3; --card:#FFFFFF; --line:#EDE5D8; --line2:#E1D7C5;
+    --ink:#2B2724; --ink2:#7C7369; --ink3:#B3A99D;
+    --clay:#BF5B3B; --clayl:#F7E8E1; --clayd:#9C4526;
+    --pine:#2E5245; --pinel:#E4EDE7; --gold:#D9A34E; --goldl:#FAF0DD;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#191817; color:#E8E2D9; padding:44px 32px 70px;
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .head{max-width:1180px;margin:0 auto 40px}
+  h1{font-family:Georgia,"Songti SC",serif;font-size:25px;font-weight:600;letter-spacing:.4px;color:#F3EDE4}
+  .sub{color:#8C8179;font-size:13px;line-height:1.9;margin-top:10px;max-width:820px}
+  .sub b{color:#C9BEB2;font-weight:600}
+
+  .grid{
+    max-width:1180px;margin:0 auto;
+    display:grid;grid-template-columns:repeat(2,1fr);gap:56px 44px;
+  }
+  .cell{display:flex;flex-direction:column;align-items:center}
+  .cap{margin-top:16px;font-size:12.5px;color:#9A8F85;letter-spacing:.3px;text-align:center;line-height:1.7}
+  .cap b{color:#D8CEC2;font-weight:600}
+  .num{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:19px;height:19px;border-radius:50%;background:var(--clay);
+    color:#fff;font-size:11px;font-weight:700;margin-right:7px;vertical-align:-3px;
+  }
+
+  /* ---------- 手机外壳 ---------- */
+  .phone{
+    width:352px;height:760px;border-radius:44px;background:#000;
+    padding:7px;position:relative;flex:0 0 auto;
+    box-shadow:0 24px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07);
+  }
+  .screen{
+    width:100%;height:100%;border-radius:38px;overflow:hidden;position:relative;
+    background:var(--paper);display:flex;flex-direction:column;
+  }
+  .notch{
+    position:absolute;top:9px;left:50%;transform:translateX(-50%);
+    width:104px;height:24px;border-radius:13px;background:#000;z-index:60;
+  }
+  .statusbar{
+    height:44px;flex:0 0 44px;display:flex;align-items:flex-end;justify-content:space-between;
+    padding:0 22px 5px;font-size:11.5px;font-weight:600;color:var(--ink);z-index:50;
+  }
+  .statusbar .r{display:flex;gap:5px;align-items:center}
+  .dot{width:5px;height:5px;border-radius:50%;background:var(--ink)}
+  .bat{width:17px;height:8px;border:1.2px solid var(--ink);border-radius:2px;position:relative}
+  .bat::after{content:"";position:absolute;inset:1.2px;background:var(--ink);border-radius:.5px}
+
+  /* ---------- 通用页面 ---------- */
+  .pagehead{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:6px 18px 12px;flex:0 0 auto;
+  }
+  .pagehead .t{font-size:15px;font-weight:600;color:var(--ink)}
+  .xh{font-size:19px;color:var(--ink2);line-height:1;font-weight:300}
+  .done{font-size:13.5px;font-weight:600;color:var(--clay)}
+  .done.off{color:var(--ink3)}
+
+  /* ---------- 1. 六宫格 ---------- */
+  .scrim{position:absolute;inset:0;background:rgba(43,39,36,.32);z-index:10}
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:20;
+    background:var(--paper);border-radius:24px 24px 0 0;
+    padding:10px 20px 30px;
+  }
+  .grabber{width:34px;height:4px;border-radius:2px;background:var(--line2);margin:0 auto 16px}
+  .sheet-title{font-size:14px;font-weight:600;color:var(--ink);text-align:center;margin-bottom:20px}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 10px}
+  .tile{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .tile .ic{
+    width:56px;height:56px;border-radius:19px;display:flex;align-items:center;justify-content:center;
+    background:var(--card);border:1px solid var(--line);
+  }
+  .tile .lb{font-size:11.5px;color:var(--ink2);letter-spacing:.2px}
+  .tile.primary .ic{background:var(--clayl);border-color:#F0D9CE}
+  .tile.primary .lb{color:var(--clay);font-weight:600}
+  .divider{height:1px;background:var(--line);margin:18px 0 0}
+
+  svg.icn{width:24px;height:24px;stroke-width:1.6;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+  .c-clay{color:var(--clay)} .c-ink{color:var(--ink2)} .c-pine{color:var(--pine)} .c-gold{color:#B98430}
+
+  /* ---------- 2. 图库 ---------- */
+  .gallery{display:flex;flex-direction:column;height:100%;background:var(--paper)}
+  .galgrid{
+    flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:3px;
+    padding:2px;overflow:hidden;align-content:start;
+  }
+  .ph{position:relative;aspect-ratio:1/1;border-radius:3px;overflow:hidden}
+  .ph .sel{
+    position:absolute;right:4px;top:4px;width:18px;height:18px;border-radius:50%;
+    border:1.6px solid rgba(255,255,255,.9);background:rgba(43,39,36,.18);
+    display:flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:700;color:#fff;
+  }
+  .ph.on .sel{background:var(--clay);border-color:#fff}
+  .ph.on::after{content:"";position:absolute;inset:0;border:2.5px solid var(--clay);border-radius:3px}
+  .ph.on{opacity:.82}
+  .galbar{
+    flex:0 0 auto;padding:10px 16px 24px;display:flex;align-items:center;justify-content:center;gap:6px;
+    background:var(--paper);border-top:1px solid var(--line);
+  }
+  .galbar .nm{font-size:12.5px;font-weight:600;color:var(--ink)}
+  .galbar .ar{font-size:9px;color:var(--ink3)}
+  .hintline{font-size:10.5px;color:var(--ink3);text-align:center;padding:6px 0 2px}
+
+  /* ---------- 3. 录音（紧凑底部面板） ---------- */
+  .recwrap{
+    position:absolute;left:0;right:0;bottom:0;z-index:20;
+    background:var(--paper);border-radius:24px 24px 0 0;
+    padding:10px 20px 24px;
+    box-shadow:0 -10px 34px rgba(43,39,36,.14);
+  }
+  .recrow{display:flex;align-items:center;gap:9px;margin:2px 0 10px}
+  .pulse{width:7px;height:7px;border-radius:50%;background:var(--clay);animation:blink 1.2s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.22}}
+  .reclabel2{font-size:11.5px;color:var(--ink2)}
+  .rectime{
+    margin-left:auto;font-family:Georgia,"Songti SC",serif;
+    font-size:19px;font-weight:600;color:var(--ink);
+    font-variant-numeric:tabular-nums;letter-spacing:.5px;
+  }
+  .reccancel{font-size:12.5px;color:var(--ink2);margin-left:15px}
+  .wave{
+    height:54px;display:flex;align-items:center;justify-content:center;
+    gap:2.6px;overflow:hidden;
+  }
+  .wave i{
+    display:block;width:3px;border-radius:1.5px;background:var(--clay);
+    transform-origin:center;animation:jump 1.05s ease-in-out infinite;
+  }
+  @keyframes jump{
+    0%,100%{transform:scaleY(.18)}
+    50%{transform:scaleY(1)}
+  }
+  .recbtn{
+    margin-top:13px;height:44px;border-radius:22px;background:var(--clay);
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    color:#fff;font-size:13.5px;font-weight:600;
+    box-shadow:0 5px 16px rgba(191,91,59,.26);
+  }
+  .recbtn .sq{width:11px;height:11px;border-radius:3px;background:#fff}
+
+  /* ---------- 4. 媒体网格（完成态） ---------- */
+  .formpad{padding:0 18px;flex:1;overflow:hidden}
+  .flabel{font-size:10.5px;font-weight:600;letter-spacing:1.2px;color:var(--ink3);margin:16px 0 8px}
+  .mediagrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .mt{position:relative;aspect-ratio:1/1;border-radius:13px;overflow:hidden}
+  .mt .rm{
+    position:absolute;right:4px;top:4px;width:19px;height:19px;border-radius:50%;
+    background:rgba(0,0,0,.55);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;
+  }
+  .mt.audio{
+    grid-column:span 3;aspect-ratio:auto;height:60px;background:var(--card);
+    border:1px solid var(--line);display:flex;align-items:center;gap:11px;padding:0 13px;
+  }
+  .aplay{
+    width:32px;height:32px;border-radius:50%;background:var(--clayl);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .abody{flex:1;min-width:0}
+  .atitle{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:5px}
+  .amin{display:flex;align-items:center;gap:2px;height:16px}
+  .amin i{width:2.5px;border-radius:1.5px;background:var(--clay);opacity:.5}
+  .adur{font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums;flex:0 0 auto}
+
+  .addcell{
+    aspect-ratio:1/1;border-radius:13px;border:1px dashed var(--line2);
+    display:flex;align-items:center;justify-content:center;background:transparent;
+  }
+  .addcell .plus{font-size:22px;color:var(--ink3);font-weight:300}
+
+  .bottom-save{
+    flex:0 0 auto;padding:12px 18px 26px;display:flex;gap:10px;
+  }
+  .bsave{
+    flex:1;height:46px;border-radius:14px;background:var(--clay);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;
+  }
+
+  .legend{max-width:1180px;margin:56px auto 0;border-top:1px solid #2C2A28;padding-top:28px}
+  .legend h3{font-size:12px;letter-spacing:1.6px;color:#8C8179;text-transform:uppercase;margin-bottom:14px}
+  .legend table{width:100%;border-collapse:collapse;font-size:13px}
+  .legend td{padding:10px 8px;border-bottom:1px solid #242220;color:#B7ACA2;vertical-align:top}
+  .legend td:first-child{color:#E8E2D9;width:150px;font-weight:600}
+  .legend code{background:#242220;padding:1.5px 6px;border-radius:4px;font-size:11.5px;color:#D9A34E}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>媒体选择与录音 · 改版设计</h1>
+  <div class="sub">
+    两个问题一起解决：<b>①</b> 照片/视频不再直接跳系统选择器，改为先选「拍摄」还是「图库」；
+    <b>②</b> 录音改为独立面板 + 实时音浪，并支持上传已有音频。
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- ============ 1 六宫格 ============ -->
+  <div class="cell">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><div class="r"><span class="dot"></span><span class="dot"></span><div class="bat"></div></div></div>
+
+        <!-- 背景：新增记录页 -->
+        <div style="flex:1;padding:0 18px;opacity:.9">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <span class="xh">‹</span><span style="font-size:14px;font-weight:600">记一笔</span>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 14px;display:flex;align-items:center;gap:9px">
+            <svg class="icn c-clay" style="width:17px;height:17px" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+            <span style="font-size:13px;color:var(--ink)">2026-11-01</span>
+            <span style="margin-left:auto;font-size:10px;color:var(--pine);background:var(--pinel);padding:2px 8px;border-radius:99px">6 个月 12 天</span>
+          </div>
+          <div class="flabel">内容</div>
+          <div style="background:var(--card);border:1px solid var(--line);border-radius:13px;height:88px;padding:12px">
+            <div style="font-size:13px;color:var(--ink3)">今天第一次自己坐起来了…</div>
+          </div>
+          <div class="flabel">照片与声音</div>
+          <div class="mediagrid">
+            <div class="addcell"><span class="plus">+</span></div>
+          </div>
+        </div>
+
+        <!-- 遮罩 + 弹窗 -->
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grabber"></div>
+          <div class="sheet-title">添加媒体</div>
+          <div class="tiles">
+            <div class="tile primary">
+              <div class="ic"><svg class="icn c-clay" viewBox="0 0 24 24"><path d="M3 8.5A2 2 0 0 1 5 6.5h2l1.4-2h7.2L17 6.5h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.4"/></svg></div>
+              <div class="lb">拍照</div>
+            </div>
+            <div class="tile primary">
+              <div class="ic"><svg class="icn c-clay" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-6 6-3-3-4 4"/></svg></div>
+              <div class="lb">图库照片</div>
+            </div>
+            <div class="tile">
+              <div class="ic"><svg class="icn c-ink" viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 11l6-3.2v8.4l-6-3.2z"/></svg></div>
+              <div class="lb">拍摄视频</div>
+            </div>
+            <div class="tile">
+              <div class="ic"><svg class="icn c-ink" viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 11l6-3.2v8.4l-6-3.2z"/><path d="M6 10.5h5"/></svg></div>
+              <div class="lb">图库视频</div>
+            </div>
+            <div class="tile">
+              <div class="ic"><svg class="icn c-gold" viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5"/></svg></div>
+              <div class="lb">录音</div>
+            </div>
+            <div class="tile">
+              <div class="ic"><svg class="icn c-ink" viewBox="0 0 24 24"><path d="M12 15V4.5M8 8.5v3M16 7v4.5"/><path d="M4 14v2a8 8 0 0 0 16 0v-2"/></svg></div>
+              <div class="lb">上传音频</div>
+            </div>
+          </div>
+          <div class="divider"></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><span class="num">1</span><b>添加媒体改为六宫格</b><br>拍照 / 图库 / 拍摄 / 图库视频 / 录音 / 上传音频，一屏看全</div>
+  </div>
+
+  <!-- ============ 2 图库 ============ -->
+  <div class="cell">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><div class="r"><span class="dot"></span><span class="dot"></span><div class="bat"></div></div></div>
+        <div class="pagehead">
+          <span class="xh">✕</span>
+          <span class="t">照片</span>
+          <span class="done">完成 (3)</span>
+        </div>
+        <div class="gallery">
+          <div class="galgrid" id="galgrid"></div>
+          <div class="hintline">已选 3 张 · 最多 9 张</div>
+          <div class="galbar"><span class="nm">最近项目</span><span class="ar">▾</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><span class="num">2</span><b>内置图库选择器</b><br>读系统相册自绘网格，4 列多选、序号角标、相册切换</div>
+  </div>
+
+  <!-- ============ 3 录音 ============ -->
+  <div class="cell">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><div class="r"><span class="dot"></span><span class="dot"></span><div class="bat"></div></div></div>
+        <div style="flex:1;padding:0 18px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <span class="xh">‹</span><span style="font-size:14px;font-weight:600">记一笔</span>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 14px;display:flex;align-items:center;gap:9px">
+            <svg class="icn c-clay" style="width:17px;height:17px" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+            <span style="font-size:13px;color:var(--ink)">2026-11-01</span>
+            <span style="margin-left:auto;font-size:10px;color:var(--pine);background:var(--pinel);padding:2px 8px;border-radius:99px">6 个月 12 天</span>
+          </div>
+          <div class="flabel">内容</div>
+          <div style="background:var(--card);border:1px solid var(--line);border-radius:13px;height:112px;padding:12px 14px">
+            <div style="font-size:13px;color:var(--ink);line-height:1.75">第一次叫出「妈妈」，声音软软的，赶紧录下来。</div>
+          </div>
+          <div class="flabel">照片与声音</div>
+          <div class="mediagrid">
+            <div class="mt" style="background:linear-gradient(145deg,#E8D9C4,#C9A87C)"><span class="rm">×</span></div>
+            <div class="addcell"><span class="plus">+</span></div>
+          </div>
+        </div>
+
+        <!-- 录音面板（紧凑底部） -->
+        <div class="recwrap">
+          <div class="grabber" style="margin-bottom:12px"></div>
+          <div class="recrow">
+            <span class="pulse"></span>
+            <span class="reclabel2">录音中</span>
+            <span class="rectime">00:12</span>
+            <span class="reccancel">取消</span>
+          </div>
+          <div class="wave" id="wave"></div>
+          <div class="recbtn"><span class="sq"></span><span>停止录音</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><span class="num">3</span><b>录音面板 · 紧凑版</b><br>底部约 190px，实时音浪驱动；录音时仍能看到正在写的内容</div>
+  </div>
+
+  <!-- ============ 4 完成态 ============ -->
+  <div class="cell">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><div class="r"><span class="dot"></span><span class="dot"></span><div class="bat"></div></div></div>
+        <div class="pagehead">
+          <span class="xh">‹</span>
+          <span class="t">记一笔</span>
+          <span style="font-size:13px;color:var(--ink3)">草稿</span>
+        </div>
+        <div class="formpad">
+          <div style="background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 14px;display:flex;align-items:center;gap:9px">
+            <svg class="icn c-clay" style="width:17px;height:17px" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+            <span style="font-size:13px;color:var(--ink)">2026-11-01</span>
+            <span style="margin-left:auto;font-size:10px;color:var(--pine);background:var(--pinel);padding:2px 8px;border-radius:99px">6 个月 12 天</span>
+          </div>
+
+          <div class="flabel">内容</div>
+          <div style="background:var(--card);border:1px solid var(--line);border-radius:13px;padding:12px 14px">
+            <div style="font-size:13px;color:var(--ink);line-height:1.7">第一次叫出「妈妈」，声音软软的，录下来了。</div>
+          </div>
+
+          <div class="flabel">照片与声音</div>
+          <div class="mediagrid">
+            <div class="mt" style="background:linear-gradient(145deg,#E8D9C4,#C9A87C)"><span class="rm">×</span></div>
+            <div class="mt" style="background:linear-gradient(145deg,#D6DFD2,#9DB49B)"><span class="rm">×</span></div>
+            <div class="mt" style="background:linear-gradient(145deg,#EADFC9,#CDB78E)"><span class="rm">×</span></div>
+          </div>
+
+          <div style="margin-top:8px">
+            <div class="mt audio">
+              <div class="aplay">
+                <svg class="icn c-clay" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"/></svg>
+              </div>
+              <div class="abody">
+                <div class="atitle">录音 · 第一次叫妈妈</div>
+                <div class="amin" id="mini"></div>
+              </div>
+              <div class="adur">00:12</div>
+              <span class="rm" style="position:static">×</span>
+            </div>
+          </div>
+
+          <div class="addcell" style="width:100%;aspect-ratio:auto;height:46px;margin-top:8px;border-radius:13px">
+            <span style="font-size:12px;color:var(--ink3)">+ 继续添加</span>
+          </div>
+        </div>
+        <div class="bottom-save"><div class="bsave">保存</div></div>
+      </div>
+    </div>
+    <div class="cap"><span class="num">4</span><b>录完后落成音频卡片</b><br>波形缩略 + 时长 + 播放 / 删除，和照片同区域管理</div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <h3>交互流程对比</h3>
+  <table>
+    <tr><td>照片</td><td>之前：点击 → 直接跳系统选择器（部分机型落到文件管理器）。现在：点击 → <code>拍照</code> / <code>图库照片</code></td></tr>
+    <tr><td>视频</td><td>之前：直接跳系统选择器。现在：<code>拍摄视频</code> / <code>图库视频</code></td></tr>
+    <tr><td>录音</td><td>之前：底部弹窗里一个列表项，点了就开始录，弹窗关掉后就看不到状态。现在：独立面板 + 实时音浪 + 计时，另有 <code>上传音频</code></td></tr>
+    <tr><td>图库实现</td><td>系统 Photo Picker 在国产 ROM 上常回退到文件管理器，故改为内置网格选择器（读取系统相册，自绘 UI）</td></tr>
+  </table>
+</div>
+
+<script>
+// ---- 图库缩略图（暖色调色块模拟真实照片） ----
+const grads = [
+  'linear-gradient(145deg,#E8D9C4,#C9A87C)','linear-gradient(145deg,#D6DFD2,#9DB49B)',
+  'linear-gradient(145deg,#EADFC9,#CDB78E)','linear-gradient(145deg,#F2E3D5,#D9A48A)',
+  'linear-gradient(145deg,#DCE3E8,#A9BAC7)','linear-gradient(145deg,#EFE0D2,#C79E86)',
+  'linear-gradient(145deg,#E3E8DA,#A8B99A)','linear-gradient(145deg,#F5E8D8,#DCC095)',
+  'linear-gradient(145deg,#E6DCEA,#B3A3C4)','linear-gradient(145deg,#F0E4D4,#CBAE8C)',
+  'linear-gradient(145deg,#D8E2DC,#9FB5A8)','linear-gradient(145deg,#EDDFD1,#C9A085)',
+  'linear-gradient(145deg,#E9E3D6,#BFB39B)','linear-gradient(145deg,#F1E0DC,#D3A296)',
+  'linear-gradient(145deg,#DDE4E6,#A6B7BC)','linear-gradient(145deg,#EDE7D4,#C7BB92)',
+  'linear-gradient(145deg,#E7DBD3,#C4A292)','linear-gradient(145deg,#DFE6DF,#A3B7A6)',
+  'linear-gradient(145deg,#F0E6D9,#D2B696)','linear-gradient(145deg,#E4DDE8,#B2A4BE)',
+  'linear-gradient(145deg,#EFE2D3,#C8A283)','linear-gradient(145deg,#DAE3E1,#A1B8B4)',
+  'linear-gradient(145deg,#F3E7DA,#D5B893)','linear-gradient(145deg,#E8DDD4,#BFA48F)',
+];
+const picked = [1, 5, 12];   // 选中项索引
+const g = document.getElementById('galgrid');
+grads.forEach((bg, i) => {
+  const d = document.createElement('div');
+  d.className = 'ph' + (picked.includes(i) ? ' on' : '');
+  d.style.background = bg;
+  const order = picked.indexOf(i) + 1;
+  d.innerHTML = `<div class="sel">${order > 0 ? order : ''}</div>`;
+  g.appendChild(d);
+});
+
+// ---- 大音浪：38 根柱（紧凑面板） ----
+const wave = document.getElementById('wave');
+const N = 38;
+for (let i = 0; i < N; i++) {
+  const b = document.createElement('i');
+  // 中间高两边低的包络，更像真实声波
+  const env = 0.3 + 0.7 * Math.sin((i / (N - 1)) * Math.PI);
+  const h = 6 + env * 46;
+  b.style.height = h.toFixed(0) + 'px';
+  b.style.animationDelay = (-Math.random() * 1.05).toFixed(2) + 's';
+  b.style.animationDuration = (0.75 + Math.random() * 0.6).toFixed(2) + 's';
+  b.style.opacity = (0.55 + env * 0.45).toFixed(2);
+  wave.appendChild(b);
+}
+
+// ---- 小音浪（卡片缩略） ----
+const mini = document.getElementById('mini');
+for (let i = 0; i < 44; i++) {
+  const b = document.createElement('i');
+  const env = 0.25 + 0.75 * Math.sin((i / 43) * Math.PI);
+  b.style.height = (2 + env * 13).toFixed(1) + 'px';
+  b.style.opacity = (0.35 + env * 0.45).toFixed(2);
+  mini.appendChild(b);
+}
+</script>
+</body>
+</html>

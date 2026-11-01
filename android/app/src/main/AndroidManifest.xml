@@ -10,10 +10,14 @@
     <!-- 录音 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!--
-      相册读取权限（READ_MEDIA_IMAGES / READ_MEDIA_VIDEO）刻意不声明：
-      image_picker 通过系统选择器取图，由系统对选中文件授予临时访问权，
-      申请该权限反而会在设置里出现一个用不到的开关，并可能被误判为未授权。
+      内置图库选择器需要遍历系统相册，故声明读取权限（photo_manager 要求：
+      读图片或视频都必须同时声明 READ_MEDIA_IMAGES 与 READ_MEDIA_VIDEO）。
+      注意：这与「用系统选择器选单张图」不同，后者不需要权限，前者必须要有。
     -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
     <!-- 导出 ZIP 备份、保存图片到相册（仅旧系统需要） -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
