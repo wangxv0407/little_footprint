@@ -13,6 +13,9 @@ android/key.properties
 android/app/.cxx/
 *.keystore
 *.jks
+# 例外：android/app/little-footprint.p12 是刻意入库的固定发布密钥。
+# CI 上必须用它签名，否则每次构建都换一把 debug 密钥，
+# 手机会一直提示「签名不一致」而无法覆盖安装。
 
 # IDE
 .idea/

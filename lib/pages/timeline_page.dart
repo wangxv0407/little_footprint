@@ -101,7 +101,8 @@ class TimelinePageState extends State<TimelinePage> {
     final today = DateTime(now.year, now.month, now.day);
     final sections = <_DaySection>[];
     for (final r in _records) {
-      final d = DateTime(r.recordTime.year, r.recordTime.month, r.recordTime.day);
+      final d =
+          DateTime(r.recordTime.year, r.recordTime.month, r.recordTime.day);
       if (sections.isNotEmpty && sections.last.day == d) {
         sections.last.items.add(r);
       } else {
@@ -130,7 +131,8 @@ class TimelinePageState extends State<TimelinePage> {
       body: SafeArea(
         bottom: false,
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.clay))
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.clay))
             : _baby == null
                 ? _noBaby()
                 : _content(),
@@ -160,7 +162,8 @@ class TimelinePageState extends State<TimelinePage> {
               child: EmptyState(
                 icon: Icons.photo_library_outlined,
                 title: _filter == RecordFilter.all ? '还没有成长记录' : '这个筛选下暂时没有记录',
-                subtitle: _filter == RecordFilter.all ? '点击右下角 + ，记下宝宝第一个瞬间' : null,
+                subtitle:
+                    _filter == RecordFilter.all ? '点击右下角 + ，记下宝宝第一个瞬间' : null,
               ),
             )
           else
@@ -175,7 +178,8 @@ class TimelinePageState extends State<TimelinePage> {
                     for (var j = 0; j < s.items.length; j++)
                       _entry(
                         s.items[j],
-                        isLast: i == sections.length - 1 && j == s.items.length - 1,
+                        isLast:
+                            i == sections.length - 1 && j == s.items.length - 1,
                       ),
                   ],
                 );
@@ -225,7 +229,8 @@ class TimelinePageState extends State<TimelinePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(dateText, style: AppText.caption.copyWith(letterSpacing: 1.2)),
+                  Text(dateText,
+                      style: AppText.caption.copyWith(letterSpacing: 1.2)),
                   const SizedBox(height: 5),
                   Row(
                     children: [
@@ -233,7 +238,8 @@ class TimelinePageState extends State<TimelinePage> {
                           style: AppText.serifTitle()),
                       const SizedBox(width: 6),
                       Text(age,
-                          style: const TextStyle(fontSize: 12, color: AppColors.ink2)),
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.ink2)),
                       const SizedBox(width: 2),
                       const Icon(Icons.keyboard_arrow_down,
                           size: 18, color: AppColors.ink3),
@@ -249,7 +255,8 @@ class TimelinePageState extends State<TimelinePage> {
             onPressed: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => SearchPage(babyId: _baby!.id)),
+                MaterialPageRoute(
+                    builder: (_) => SearchPage(babyId: _baby!.id)),
               );
               load();
             },
@@ -290,10 +297,13 @@ class TimelinePageState extends State<TimelinePage> {
                       )),
                   const SizedBox(height: 3),
                   Text(
-                    first.content.isEmpty ? '这一天有 ${_lastYear.length} 条记录' : first.content,
+                    first.content.isEmpty
+                        ? '这一天有 ${_lastYear.length} 条记录'
+                        : first.content,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12.5, color: AppColors.ink),
+                    style:
+                        const TextStyle(fontSize: 12.5, color: AppColors.ink),
                   ),
                 ],
               ),
@@ -337,7 +347,8 @@ class TimelinePageState extends State<TimelinePage> {
 
   Widget _dayHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.pageX, 10, AppSpace.pageX, 10),
+      padding:
+          const EdgeInsets.fromLTRB(AppSpace.pageX, 10, AppSpace.pageX, 10),
       child: Row(
         children: [
           Text(
@@ -363,37 +374,53 @@ class TimelinePageState extends State<TimelinePage> {
     final medias = _mediaMap[r.uuid] ?? const <MediaItem>[];
     return Padding(
       padding: const EdgeInsets.only(left: AppSpace.pageX),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: 16,
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: r.isMilestone ? AppColors.pine : AppColors.lineStrong,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.paper, width: 1.4),
+      // 这里刻意不用 IntrinsicHeight。
+      // 它要求所有后代都能回答「固有尺寸」，而 GridView/ListView 这类滚动组件
+      // 不支持：debug 下直接断言炸掉，release 下静默返回 0，
+      // 结果是卡片高度少算一截、内容整个画到卡片外面。
+      // 改成 Stack + Positioned 撑竖线，高度完全由卡片自己决定，没有这个隐患。
+      child: Stack(
+        children: [
+          Positioned(
+            left: 7,
+            top: 24,
+            bottom: 0,
+            child: isLast
+                ? const SizedBox.shrink()
+                : Container(width: 1, color: AppColors.line),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 16,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 20),
+                  child: Center(
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: r.isMilestone
+                            ? AppColors.pine
+                            : AppColors.lineStrong,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.paper, width: 1.4),
+                      ),
                     ),
                   ),
-                  if (!isLast)
-                    Expanded(child: Container(width: 1, color: AppColors.line)),
-                ],
+                ),
               ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 8, right: AppSpace.pageX, bottom: 12),
-                child: _recordCard(r, medias),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                      left: 8, right: AppSpace.pageX, bottom: 12),
+                  child: _recordCard(r, medias),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -405,6 +432,8 @@ class TimelinePageState extends State<TimelinePage> {
 
     return AppCard(
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+      // 图片多的时候绝对不允许画出卡片圆角外，多裁一层当保险
+      clipBehavior: Clip.antiAlias,
       border: Border(
         left: BorderSide(
           color: r.isMilestone ? AppColors.pine : AppColors.line,
@@ -441,7 +470,10 @@ class TimelinePageState extends State<TimelinePage> {
           ),
           if (r.content.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(r.content, style: AppText.bodySmall, maxLines: 4, overflow: TextOverflow.ellipsis),
+            Text(r.content,
+                style: AppText.bodySmall,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis),
           ],
           if (r.tags.isNotEmpty) ...[
             const SizedBox(height: 9),
@@ -451,13 +483,15 @@ class TimelinePageState extends State<TimelinePage> {
               children: [
                 for (final t in r.tags.take(4))
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.clayLight,
                       borderRadius: AppRadius.pill,
                     ),
                     child: Text(t,
-                        style: const TextStyle(fontSize: 11, color: AppColors.clayDark)),
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.clayDark)),
                   ),
               ],
             ),
@@ -473,8 +507,7 @@ class TimelinePageState extends State<TimelinePage> {
                 if (hasVideo)
                   const AppBadge(label: '视频', icon: Icons.videocam_outlined),
                 if (hasVideo && hasAudio) const SizedBox(width: 6),
-                if (hasAudio)
-                  const AppBadge.clay('录音', icon: Icons.graphic_eq),
+                if (hasAudio) const AppBadge.clay('录音', icon: Icons.graphic_eq),
               ],
             ),
           ],
@@ -483,45 +516,92 @@ class TimelinePageState extends State<TimelinePage> {
     );
   }
 
+  /// 卡片内图片区。
+  ///
+  /// 不用 GridView：滚动组件不支持「固有尺寸」，一旦外层今后套上
+  /// IntrinsicHeight 就会算错高度（debug 断言、release 静默为 0）。
+  /// 这里用 Row/Column + AspectRatio，既没有这个隐患，
+  /// 也能保证每张图是正方的、行列对齐。
   Widget _imageGrid(List<MediaItem> images) {
     if (images.length == 1) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        child: AspectRatio(
-          aspectRatio: 2 / 1,
-          child: _img(images.first),
-        ),
+        child: AspectRatio(aspectRatio: 2 / 1, child: _img(images.first)),
       );
     }
     final show = images.take(4).toList();
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: show.length == 2 ? 2 : 3,
-      mainAxisSpacing: 6,
-      crossAxisSpacing: 6,
+    const gap = 6.0;
+
+    if (show.length == 2) {
+      return Row(
+        children: [
+          Expanded(child: _gridCell(show[0])),
+          const SizedBox(width: gap),
+          Expanded(child: _gridCell(show[1])),
+        ],
+      );
+    }
+
+    if (show.length == 3) {
+      return Row(
+        children: [
+          Expanded(child: _gridCell(show[0])),
+          const SizedBox(width: gap),
+          Expanded(child: _gridCell(show[1])),
+          const SizedBox(width: gap),
+          Expanded(child: _gridCell(show[2])),
+        ],
+      );
+    }
+
+    // 4 张及以上：2×2，第 4 格盖 +N
+    return Column(
       children: [
-        for (var i = 0; i < show.length; i++)
-          Stack(
-            fit: StackFit.expand,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: _img(show[i]),
-              ),
-              if (i == 3 && images.length > 4)
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black38,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text('+${images.length - 4}',
-                      style: const TextStyle(color: Colors.white, fontSize: 14)),
-                ),
-            ],
-          ),
+        Row(
+          children: [
+            Expanded(child: _gridCell(show[0])),
+            const SizedBox(width: gap),
+            Expanded(child: _gridCell(show[1])),
+          ],
+        ),
+        const SizedBox(height: gap),
+        Row(
+          children: [
+            Expanded(child: _gridCell(show[2])),
+            const SizedBox(width: gap),
+            Expanded(
+              child: _gridCell(show[3], more: images.length - 4),
+            ),
+          ],
+        ),
       ],
+    );
+  }
+
+  Widget _gridCell(MediaItem m, {int more = 0}) {
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: _img(m),
+          ),
+          if (more > 0)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black38,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '+$more',
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -636,7 +716,8 @@ class _Thumb extends StatelessWidget {
             : Image.file(
                 File(p.join(rootPath, media!.localRelativePath)),
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(color: AppColors.clayLight),
+                errorBuilder: (_, __, ___) =>
+                    Container(color: AppColors.clayLight),
               ),
       ),
     );

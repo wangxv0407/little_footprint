@@ -15,6 +15,10 @@ class AppCard extends StatelessWidget {
   final BoxBorder? border;
   final VoidCallback? onTap;
 
+  /// 需要把内容严格裁在圆角内时传 [Clip.antiAlias]。
+  /// 默认不裁：绝大多数卡片内容不会超出，裁一层多一次 saveLayer。
+  final Clip clipBehavior;
+
   const AppCard({
     super.key,
     required this.child,
@@ -24,6 +28,7 @@ class AppCard extends StatelessWidget {
     this.color = AppColors.card,
     this.border,
     this.onTap,
+    this.clipBehavior = Clip.none,
   });
 
   @override
@@ -31,6 +36,7 @@ class AppCard extends StatelessWidget {
     final content = Container(
       padding: padding,
       margin: margin,
+      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(radius),
@@ -57,7 +63,8 @@ class SectionLabel extends StatelessWidget {
     this.text, {
     super.key,
     this.trailing,
-    this.padding = const EdgeInsets.fromLTRB(AppSpace.pageX, AppSpace.xl, AppSpace.pageX, AppSpace.xs),
+    this.padding = const EdgeInsets.fromLTRB(
+        AppSpace.pageX, AppSpace.xl, AppSpace.pageX, AppSpace.xs),
   });
 
   @override
@@ -209,7 +216,8 @@ class EmptyState extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: AppColors.ink2, height: 1.6),
+              style: const TextStyle(
+                  fontSize: 14, color: AppColors.ink2, height: 1.6),
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 6),
@@ -287,14 +295,14 @@ class _AvatarPalette {
   factory _AvatarPalette.of(int gender) {
     switch (gender) {
       case 1: // 男孩：浅松绿
-        return const _AvatarPalette(
-            Color(0xFFE4EDE7), Color(0xFFFFFDFB), Color(0xFF2E5245), Color(0xFF2B2724));
+        return const _AvatarPalette(Color(0xFFE4EDE7), Color(0xFFFFFDFB),
+            Color(0xFF2E5245), Color(0xFF2B2724));
       case 2: // 女孩：浅藕粉
-        return const _AvatarPalette(
-            Color(0xFFFAE7EC), Color(0xFFFFFDFB), Color(0xFFC4788F), Color(0xFF2B2724));
+        return const _AvatarPalette(Color(0xFFFAE7EC), Color(0xFFFFFDFB),
+            Color(0xFFC4788F), Color(0xFF2B2724));
       default: // 未填：浅陶土
-        return const _AvatarPalette(
-            Color(0xFFF7E8E1), Color(0xFFFFFDFB), Color(0xFFBF5B3B), Color(0xFF2B2724));
+        return const _AvatarPalette(Color(0xFFF7E8E1), Color(0xFFFFFDFB),
+            Color(0xFFBF5B3B), Color(0xFF2B2724));
     }
   }
 }
@@ -321,7 +329,8 @@ class _BabyFacePainter extends CustomPainter {
     canvas.drawPath(
       Path()
         ..moveTo(cx - u * 0.070, h * 0.310)
-        ..quadraticBezierTo(cx + u * 0.010, h * 0.130, cx + u * 0.070, h * 0.310),
+        ..quadraticBezierTo(
+            cx + u * 0.010, h * 0.130, cx + u * 0.070, h * 0.310),
       Paint()
         ..color = p.accent
         ..style = PaintingStyle.stroke
@@ -407,7 +416,8 @@ class PageTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.xs, 4, AppSpace.xs, AppSpace.sm),
+      padding:
+          const EdgeInsets.fromLTRB(AppSpace.xs, 4, AppSpace.xs, AppSpace.sm),
       child: Row(
         children: [
           if (showBack)
@@ -421,7 +431,10 @@ class PageTopBar extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.ink),
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.ink),
             ),
           ),
           if (trailing != null) trailing!,
