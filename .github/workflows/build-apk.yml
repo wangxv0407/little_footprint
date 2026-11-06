@@ -32,6 +32,10 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      # 同步传输层回归：真实 TCP 回环，验证 JSON 行/二进制分帧与跨分片解码
+      - name: Channel loopback probe
+        run: dart run tool/channel_loopback_probe.dart
+
       - name: Build release APK
         shell: bash
         run: |
