@@ -35,6 +35,20 @@ class AppDatabase {
     return _db!;
   }
 
+  /// 数据库文件绝对路径（备份/恢复用）
+  Future<String> databaseFilePath() async =>
+      join(await getDatabasesPath(), _dbName);
+
+  /// 备份包的 schema 版本上限校验用：备份的 user_version 高于本机时拒绝导入
+  static int get schemaVersion => _dbVersion;
+
+  /// 恢复备份前关闭当前连接；下次访问 [database] 时重新打开（按需迁移）
+  Future<void> closeForRestore() async {
+    final db = _db;
+    _db = null;
+    await db?.close();
+  }
+
   Future<Database> _open() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, _dbName);
@@ -140,13 +154,18 @@ class AppDatabase {
     }
 
     // 4) growth_record 新字段
-    await _addColumnIfMissing(db, 'growth_record', 'baby_id', 'INTEGER NOT NULL DEFAULT 1');
-    await _addColumnIfMissing(db, 'growth_record', 'record_type', "TEXT NOT NULL DEFAULT 'diary'");
-    await _addColumnIfMissing(db, 'growth_record', 'milestone_code', "TEXT NOT NULL DEFAULT ''");
-    await _addColumnIfMissing(db, 'growth_record', 'is_favorite', 'INTEGER NOT NULL DEFAULT 0');
+    await _addColumnIfMissing(
+        db, 'growth_record', 'baby_id', 'INTEGER NOT NULL DEFAULT 1');
+    await _addColumnIfMissing(
+        db, 'growth_record', 'record_type', "TEXT NOT NULL DEFAULT 'diary'");
+    await _addColumnIfMissing(
+        db, 'growth_record', 'milestone_code', "TEXT NOT NULL DEFAULT ''");
+    await _addColumnIfMissing(
+        db, 'growth_record', 'is_favorite', 'INTEGER NOT NULL DEFAULT 0');
 
     // 5) growth_metric 新字段
-    await _addColumnIfMissing(db, 'growth_metric', 'baby_id', 'INTEGER NOT NULL DEFAULT 1');
+    await _addColumnIfMissing(
+        db, 'growth_metric', 'baby_id', 'INTEGER NOT NULL DEFAULT 1');
 
     // 6) 里程碑库
     await db.execute('''
@@ -163,8 +182,10 @@ class AppDatabase {
     await _seedMilestones(db);
 
     // 7) 旧身份值规范化
-    await db.execute("UPDATE growth_record SET create_device = 'owner' WHERE create_device = 'husband'");
-    await db.execute("UPDATE growth_record SET create_device = 'partner' WHERE create_device = 'wife'");
+    await db.execute(
+        "UPDATE growth_record SET create_device = 'owner' WHERE create_device = 'husband'");
+    await db.execute(
+        "UPDATE growth_record SET create_device = 'partner' WHERE create_device = 'wife'");
 
     // 8) 索引
     await _createIndexes(db);
@@ -231,16 +252,21 @@ class AppDatabase {
   }
 
   Future<void> _createIndexes(Database db) async {
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_record_baby_time ON growth_record(baby_id, is_deleted, record_time DESC)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_record_type ON growth_record(record_type)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_record_ms ON growth_record(milestone_code)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_metric_baby_time ON growth_metric(baby_id, is_deleted, metric_time)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_record_baby_time ON growth_record(baby_id, is_deleted, record_time DESC)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_record_type ON growth_record(record_type)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_record_ms ON growth_record(milestone_code)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_metric_baby_time ON growth_metric(baby_id, is_deleted, metric_time)');
   }
 
   Future<void> _seedMilestones(Database db) async {
     final batch = db.batch();
     for (final m in kMilestoneSeed) {
-      batch.insert('milestone_def', m.toMap(), conflictAlgorithm: ConflictAlgorithm.ignore);
+      batch.insert('milestone_def', m.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.ignore);
     }
     await batch.commit(noResult: true);
   }
@@ -278,7 +304,8 @@ class AppDatabase {
         FOREIGN KEY (record_uuid) REFERENCES growth_record(uuid) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX idx_media_record ON media_item(record_uuid)');
+    await db
+        .execute('CREATE INDEX idx_media_record ON media_item(record_uuid)');
 
     await db.execute('''
       CREATE TABLE growth_metric (
@@ -328,7 +355,8 @@ class AppDatabase {
 
   Future<String?> getSetting(String key) async {
     final db = await database;
-    final r = await db.query('app_setting', where: 'key = ?', whereArgs: [key], limit: 1);
+    final r = await db.query('app_setting',
+        where: 'key = ?', whereArgs: [key], limit: 1);
     if (r.isEmpty) return null;
     return r.first['value'] as String?;
   }
@@ -343,12 +371,12 @@ class AppDatabase {
   }
 
   /// 本机身份：owner / partner
-  Future<String> getDeviceRole() async => (await getSetting('device_role')) ?? 'owner';
+  Future<String> getDeviceRole() async =>
+      (await getSetting('device_role')) ?? 'owner';
 
   Future<void> setDeviceRole(String role) => setSetting('device_role', role);
 
-  static String deviceRoleLabel(String role) =>
-      role == 'partner' ? '妈妈' : '爸爸';
+  static String deviceRoleLabel(String role) => role == 'partner' ? '妈妈' : '爸爸';
 
   // ==================== 宝宝 ====================
 
@@ -361,7 +389,8 @@ class AppDatabase {
   /// 当前选中的宝宝；没有任何宝宝时返回 null
   Future<BabyInfo?> getActiveBaby() async {
     final db = await database;
-    final active = await db.query('baby_info', where: 'is_active = 1', limit: 1);
+    final active =
+        await db.query('baby_info', where: 'is_active = 1', limit: 1);
     if (active.isNotEmpty) return BabyInfo.fromMap(active.first);
     final any = await db.query('baby_info', orderBy: 'id ASC', limit: 1);
     if (any.isEmpty) return null;
@@ -373,7 +402,8 @@ class AppDatabase {
 
   Future<BabyInfo?> getBabyById(int id) async {
     final db = await database;
-    final r = await db.query('baby_info', where: 'id = ?', whereArgs: [id], limit: 1);
+    final r =
+        await db.query('baby_info', where: 'id = ?', whereArgs: [id], limit: 1);
     if (r.isEmpty) return null;
     return BabyInfo.fromMap(r.first);
   }
@@ -384,7 +414,9 @@ class AppDatabase {
     map['last_modify_ts'] = DateTime.now().millisecondsSinceEpoch;
     final id = await db.insert('baby_info', map);
     // 第一个宝宝自动成为当前
-    final cnt = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM baby_info')) ?? 0;
+    final cnt = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM baby_info')) ??
+        0;
     if (cnt == 1) await setActiveBaby(id);
     return id;
   }
@@ -393,7 +425,9 @@ class AppDatabase {
     final db = await database;
     await db.update(
       'baby_info',
-      info.copyWith(lastModifyTs: DateTime.now().millisecondsSinceEpoch).toMap(),
+      info
+          .copyWith(lastModifyTs: DateTime.now().millisecondsSinceEpoch)
+          .toMap(),
       where: 'id = ?',
       whereArgs: [info.id],
     );
@@ -403,7 +437,8 @@ class AppDatabase {
     final db = await database;
     await db.transaction((txn) async {
       await txn.update('baby_info', {'is_active': 0});
-      await txn.update('baby_info', {'is_active': 1}, where: 'id = ?', whereArgs: [id]);
+      await txn.update('baby_info', {'is_active': 1},
+          where: 'id = ?', whereArgs: [id]);
     });
   }
 
@@ -427,10 +462,13 @@ class AppDatabase {
         whereArgs: [babyId],
       );
       for (final row in uuids) {
-        await txn.delete('media_item', where: 'record_uuid = ?', whereArgs: [row['uuid']]);
+        await txn.delete('media_item',
+            where: 'record_uuid = ?', whereArgs: [row['uuid']]);
       }
-      await txn.delete('growth_record', where: 'baby_id = ?', whereArgs: [babyId]);
-      await txn.delete('growth_metric', where: 'baby_id = ?', whereArgs: [babyId]);
+      await txn
+          .delete('growth_record', where: 'baby_id = ?', whereArgs: [babyId]);
+      await txn
+          .delete('growth_metric', where: 'baby_id = ?', whereArgs: [babyId]);
       await txn.delete('baby_info', where: 'id = ?', whereArgs: [babyId]);
     });
   }
@@ -439,12 +477,14 @@ class AppDatabase {
 
   Future<void> upsertGrowthRecord(GrowthRecord r) async {
     final db = await database;
-    await db.insert('growth_record', r.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('growth_record', r.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<GrowthRecord?> getGrowthRecord(String uuid) async {
     final db = await database;
-    final list = await db.query('growth_record', where: 'uuid = ?', whereArgs: [uuid]);
+    final list =
+        await db.query('growth_record', where: 'uuid = ?', whereArgs: [uuid]);
     if (list.isEmpty) return null;
     return GrowthRecord.fromMap(list.first);
   }
@@ -462,11 +502,14 @@ class AppDatabase {
 
     switch (filter) {
       case RecordFilter.photo:
-        where.write(" AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'image')");
+        where.write(
+            " AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'image')");
       case RecordFilter.audio:
-        where.write(" AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'audio')");
+        where.write(
+            " AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'audio')");
       case RecordFilter.video:
-        where.write(" AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'video')");
+        where.write(
+            " AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'video')");
       case RecordFilter.milestone:
         where.write(" AND r.record_type = '${RecordType.milestone}'");
       case RecordFilter.favorite:
@@ -476,8 +519,7 @@ class AppDatabase {
     }
 
     // 记录时间已精确到「天」，同日多条按最后写入时间倒序，保证顺序稳定
-    final sql = StringBuffer(
-        'SELECT r.* FROM growth_record r WHERE $where '
+    final sql = StringBuffer('SELECT r.* FROM growth_record r WHERE $where '
         'ORDER BY r.record_time DESC, r.last_modify_ts DESC');
     if (limit != null) {
       sql.write(' LIMIT $limit OFFSET $offset');
@@ -527,7 +569,10 @@ class AppDatabase {
         OR r.tags LIKE ?
         OR r.milestone_code IN (SELECT code FROM milestone_def WHERE name LIKE ?)
       )''');
-      args..add(kw)..add(kw)..add(kw);
+      args
+        ..add(kw)
+        ..add(kw)
+        ..add(kw);
     }
     if (from != null) {
       where.write(' AND r.record_time >= ?');
@@ -543,11 +588,14 @@ class AppDatabase {
       case RecordFilter.favorite:
         where.write(' AND r.is_favorite = 1');
       case RecordFilter.photo:
-        where.write(" AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'image')");
+        where.write(
+            " AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'image')");
       case RecordFilter.video:
-        where.write(" AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'video')");
+        where.write(
+            " AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'video')");
       case RecordFilter.audio:
-        where.write(" AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'audio')");
+        where.write(
+            " AND EXISTS (SELECT 1 FROM media_item m WHERE m.record_uuid = r.uuid AND m.file_type = 'audio')");
       case RecordFilter.all:
         break;
     }
@@ -577,7 +625,10 @@ class AppDatabase {
     final db = await database;
     return db.update(
       'growth_record',
-      {'is_deleted': 1, 'last_modify_ts': DateTime.now().millisecondsSinceEpoch},
+      {
+        'is_deleted': 1,
+        'last_modify_ts': DateTime.now().millisecondsSinceEpoch
+      },
       where: 'uuid = ?',
       whereArgs: [uuid],
     );
@@ -610,7 +661,8 @@ class AppDatabase {
 
   Future<List<MilestoneDef>> getMilestoneDefs() async {
     final db = await database;
-    final rows = await db.query('milestone_def', orderBy: 'category ASC, sort_order ASC');
+    final rows = await db.query('milestone_def',
+        orderBy: 'category ASC, sort_order ASC');
     return rows.map(MilestoneDef.fromMap).toList();
   }
 
@@ -621,7 +673,8 @@ class AppDatabase {
     final rows = await db.query(
       'growth_record',
       columns: ['milestone_code', 'record_time', 'uuid'],
-      where: "baby_id = ? AND is_deleted = 0 AND record_type = 'milestone' AND milestone_code != ''",
+      where:
+          "baby_id = ? AND is_deleted = 0 AND record_type = 'milestone' AND milestone_code != ''",
       whereArgs: [babyId],
       orderBy: 'record_time ASC',
     );
@@ -658,7 +711,8 @@ class AppDatabase {
 
   Future<MilestoneDef?> getMilestoneDef(String code) async {
     final db = await database;
-    final r = await db.query('milestone_def', where: 'code = ?', whereArgs: [code], limit: 1);
+    final r = await db.query('milestone_def',
+        where: 'code = ?', whereArgs: [code], limit: 1);
     if (r.isEmpty) return null;
     return MilestoneDef.fromMap(r.first);
   }
@@ -677,7 +731,8 @@ class AppDatabase {
     return db.insert('media_item', m.toMap());
   }
 
-  Future<List<MediaItem>> getMediaForRecord(String recordUuid, {bool onlySyncable = false}) async {
+  Future<List<MediaItem>> getMediaForRecord(String recordUuid,
+      {bool onlySyncable = false}) async {
     final db = await database;
     var where = 'record_uuid = ?';
     final args = <String>[recordUuid];
@@ -696,7 +751,8 @@ class AppDatabase {
   /// 记录被编辑后，删除不再引用的媒体行，返回被移除的相对路径
   Future<List<String>> retainMedia(String recordUuid, List<int> keepIds) async {
     final db = await database;
-    final rows = await db.query('media_item', where: 'record_uuid = ?', whereArgs: [recordUuid]);
+    final rows = await db
+        .query('media_item', where: 'record_uuid = ?', whereArgs: [recordUuid]);
     final removed = <String>[];
     for (final row in rows) {
       final id = row['id'] as int;
@@ -712,7 +768,8 @@ class AppDatabase {
 
   Future<void> upsertGrowthMetric(GrowthMetric m) async {
     final db = await database;
-    await db.insert('growth_metric', m.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('growth_metric', m.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<GrowthMetric>> getMetrics(int babyId) async {
@@ -737,7 +794,10 @@ class AppDatabase {
     final db = await database;
     return db.update(
       'growth_metric',
-      {'is_deleted': 1, 'last_modify_ts': DateTime.now().millisecondsSinceEpoch},
+      {
+        'is_deleted': 1,
+        'last_modify_ts': DateTime.now().millisecondsSinceEpoch
+      },
       where: 'uuid = ?',
       whereArgs: [uuid],
     );
@@ -747,13 +807,15 @@ class AppDatabase {
 
   Future<List<GrowthRecord>> getRecordsChangedSince(int sinceTs) async {
     final db = await database;
-    final list = await db.query('growth_record', where: 'last_modify_ts > ?', whereArgs: [sinceTs]);
+    final list = await db.query('growth_record',
+        where: 'last_modify_ts > ?', whereArgs: [sinceTs]);
     return list.map(GrowthRecord.fromMap).toList();
   }
 
   Future<List<GrowthMetric>> getMetricsChangedSince(int sinceTs) async {
     final db = await database;
-    final list = await db.query('growth_metric', where: 'last_modify_ts > ?', whereArgs: [sinceTs]);
+    final list = await db.query('growth_metric',
+        where: 'last_modify_ts > ?', whereArgs: [sinceTs]);
     return list.map(GrowthMetric.fromMap).toList();
   }
 
@@ -771,7 +833,8 @@ class AppDatabase {
 
   Future<List<SyncLog>> getSyncLogs({int limit = 20}) async {
     final db = await database;
-    final list = await db.query('sync_log', orderBy: 'sync_ts DESC', limit: limit);
+    final list =
+        await db.query('sync_log', orderBy: 'sync_ts DESC', limit: limit);
     return list.map(SyncLog.fromMap).toList();
   }
 
@@ -781,8 +844,8 @@ class AppDatabase {
     return int.tryParse(v ?? '0') ?? 0;
   }
 
-  Future<void> markBackedUp() =>
-      setSetting('last_backup_ts', DateTime.now().millisecondsSinceEpoch.toString());
+  Future<void> markBackedUp() => setSetting(
+      'last_backup_ts', DateTime.now().millisecondsSinceEpoch.toString());
 }
 
 /// 便于在数据层直接改预置标记

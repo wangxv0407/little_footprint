@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -90,7 +91,8 @@ class ProfilePageState extends State<ProfilePage> {
       body: SafeArea(
         bottom: false,
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.clay))
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.clay))
             : ListView(
                 padding: EdgeInsets.zero,
                 children: [
@@ -118,12 +120,19 @@ class ProfilePageState extends State<ProfilePage> {
                     _row(
                       icon: Icons.inventory_2_outlined,
                       tint: AppColors.clay,
-                      title: '备份与恢复',
+                      title: '导出备份',
                       subtitle: _backupSubtitle,
                       subtitleColor: _backupAgeDays < 0 || _backupAgeDays > 30
                           ? AppColors.clay
                           : null,
                       onTap: _exportBackup,
+                    ),
+                    _row(
+                      icon: Icons.restore,
+                      tint: AppColors.gold,
+                      title: '从备份恢复',
+                      subtitle: '选择备份 ZIP，覆盖本机全部数据',
+                      onTap: _importBackup,
                     ),
                     _row(
                       icon: Icons.storage_outlined,
@@ -283,7 +292,8 @@ class ProfilePageState extends State<ProfilePage> {
               ),
             ),
             if (trailingText != null)
-              Text(trailingText, style: AppText.caption.copyWith(color: AppColors.ink2))
+              Text(trailingText,
+                  style: AppText.caption.copyWith(color: AppColors.ink2))
             else
               const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3),
           ],
@@ -293,12 +303,14 @@ class ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openBabyManage() async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => const BabyManagePage()));
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const BabyManagePage()));
     load();
   }
 
   Future<void> _openSync() async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncPage()));
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const SyncPage()));
   }
 
   Future<void> _exportBackup() async {
@@ -312,7 +324,8 @@ class ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.paper,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: const Text('导出本地备份', style: TextStyle(fontSize: 16)),
         content: Text(
           '$desc\n\n将打包数据库与媒体文件为一个 ZIP，保存到手机 Download 目录。\n'
@@ -320,8 +333,12 @@ class ProfilePageState extends State<ProfilePage> {
           style: const TextStyle(fontSize: 13, height: 1.7),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确认导出')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('确认导出')),
         ],
       ),
     );
@@ -341,12 +358,99 @@ class ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  /// 恢复流程：选文件 → 强确认（覆盖全部数据）→ 不可中断地执行 → 刷新
+  Future<void> _importBackup() async {
+    final res = await FilePicker.pickFiles(type: FileType.any);
+    final path = res?.files.single.path;
+    if (path == null || !mounted) return;
+    if (!path.toLowerCase().endsWith('.zip')) {
+      _snack('请选择 .zip 格式的备份文件');
+      return;
+    }
+    final fileName = path.split(Platform.pathSeparator).last;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.paper,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: const Text('从备份恢复', style: TextStyle(fontSize: 16)),
+        content: Text(
+          '将导入「$fileName」并**完全覆盖**本机现有的全部数据：\n'
+          '宝宝档案、成长记录、照片、录音、身高体重都会被替换成备份里的内容。\n\n'
+          '⚠️ 此操作不可撤销。如果本机有备份里没有的记录，请先「导出备份」。',
+          style: const TextStyle(fontSize: 13, height: 1.7),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('覆盖导入')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    // 进度框不可点掉：恢复中途取消会留下半截数据
+    var dialogShown = false;
+    // ignore: unawaited_futures
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: Center(
+          child: Card(
+            color: AppColors.card,
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: AppColors.clay),
+                  SizedBox(height: 14),
+                  Text('正在恢复，请勿关闭应用', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ).then((_) => dialogShown = false);
+    dialogShown = true;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final mediaCount = await BackupService.instance.importBackupZip(path);
+      if (dialogShown && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      await load();
+      messenger.showSnackBar(SnackBar(
+        content: Text('恢复完成，导入 $mediaCount 个媒体文件'),
+      ));
+    } catch (e) {
+      if (dialogShown && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      messenger.showSnackBar(SnackBar(content: Text('恢复失败：$e')));
+    }
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
   void _about() {
     showAboutDialog(
       context: context,
       applicationName: '小脚印成长记',
       applicationVersion: '1.1.0',
-      applicationIcon: const Icon(Icons.child_care, color: AppColors.clay, size: 40),
+      applicationIcon:
+          const Icon(Icons.child_care, color: AppColors.clay, size: 40),
       children: const [
         Text(
           '本地优先的宝宝成长记录工具。照片、录音、视频、日记、身高体重全部保存在本机；'
